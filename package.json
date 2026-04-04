@@ -1,42 +1,19 @@
 {
-<<<<<<< HEAD
-  "name": "backend",
+  "name": "batmotor",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
-  "scripts": {
-    "dev": "tsx --watch src/main.ts",
-    "start": "node server.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
-  "devDependencies": {
-    "@types/node": "^25.5.0",
-    "@types/pg": "^8.20.0",
-    "prisma": "^7.6.0",
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
-  },
-  "dependencies": {
-    "@prisma/adapter-mariadb": "^7.6.0",
-    "@prisma/adapter-pg": "^7.6.0",
-    "@prisma/client": "^7.6.0",
-    "@types/express": "^5.0.6",
-    "dotenv": "^17.4.0",
-    "express": "^5.2.1",
-    "pg": "^8.20.0"
-  }
-=======
-  "name": "s",
-  "version": "1.0.0",
-  "description": "",
-  "main": "servedo.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/C-R-M-Senai/BatMotor.git"
+  },
   "author": "",
-  "license": "ISC"
->>>>>>> df6745d345c2510b7e2b9417c519abc9a5fafab2
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/C-R-M-Senai/BatMotor/issues"
+  },
+  "homepage": "https://github.com/C-R-M-Senai/BatMotor#readme"
 }
