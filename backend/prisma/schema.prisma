@@ -44,7 +44,7 @@ model Modulo {
 
 model Perfil {
   id Int @id @default(autoincrement())
-  role Role @unique
+  role Role 
   descricao String?
   
   usuarioPerfis UsuarioPerfil[]
@@ -77,9 +77,9 @@ model Fornecedor {
   perfil_id Int
 
   usuario Usuario @relation(fields: [usuario_id], references: [id])
-  perfil Perfil @relation(fields: [perfil_id], references: [id])
+  perfil Perfil @relation(fields: [perfil_id], references: [id]) 
 
-  @@id([usuario_id, perfil_id])
+  @@id([usuario_id, perfil_id]) // @@id
  }
 
   model MateriaFornecedor {
