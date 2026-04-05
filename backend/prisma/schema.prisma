@@ -25,8 +25,8 @@ enum Role {
 
 model Usuario {
   id Int @id @default(autoincrement())
-  nome String
-  email String @unique
+  nome String 
+  email String  @unique
   senha String
   cpf String @unique
   ativo Boolean @default(true)
@@ -44,9 +44,9 @@ model Modulo {
 
 model Perfil {
   id Int @id @default(autoincrement())
-  role Role @unique
+  role Role 
   descricao String?
-
+  
   usuarioPerfis UsuarioPerfil[]
   permissoes PermissaoModulo[]
 }
@@ -72,35 +72,35 @@ model Fornecedor {
   materiasFornecedores MateriaFornecedor[]
 }
 
-model UsuarioPerfil {
+ model UsuarioPerfil {
   usuario_id Int
   perfil_id Int
 
   usuario Usuario @relation(fields: [usuario_id], references: [id])
-  perfil Perfil @relation(fields: [perfil_id], references: [id])
+  perfil Perfil @relation(fields: [perfil_id], references: [id]) 
 
-  @@id([usuario_id, perfil_id])
-}
+  @@id([usuario_id, perfil_id]) // @@id
+ }
 
-model MateriaFornecedor {
-  materia_prima_id Int
-  fornecedor_id Int
+  model MateriaFornecedor {
+    materia_prima_id Int
+    fornecedor_id Int
 
-  materia MateriaPrima @relation(fields: [materia_prima_id], references: [id])
-  fornecedor Fornecedor @relation(fields: [fornecedor_id], references: [id])
+    materia MateriaPrima @relation(fields: [materia_prima_id], references: [id])
+    fornecedor Fornecedor @relation(fields: [fornecedor_id], references: [id])
 
-  @@id([materia_prima_id, fornecedor_id])
-}
+    @@id([materia_prima_id, fornecedor_id])
+  }
 
-model PermissaoModulo {
-  id Int @id @default(autoincrement())
-  perfil_id Int
-  modulo_id Int
-  pode_ler Boolean @default(false)
-  pode_criar Boolean @default(false)
-  pode_atualizar Boolean @default(false)
-  pode_excluir Boolean @default(false)
+  model PermissaoModulo {
+    id Int @id @default(autoincrement())
+    perfil_id Int
+    modulo_id Int
+    pode_ler Boolean @default(false)
+    pode_criar Boolean @default(false)
+    pode_atualizar Boolean @default(false) 
+    pode_excluir Boolean @default(false)
 
-  perfil Perfil @relation(fields: [perfil_id], references: [id])
-  modulo Modulo @relation(fields: [modulo_id], references: [id])
-}
+    perfil Perfil @relation(fields: [perfil_id], references: [id])
+    modulo Modulo @relation(fields: [modulo_id], references: [id])
+  }
