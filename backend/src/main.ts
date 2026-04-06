@@ -45,85 +45,91 @@ app.use(express.json());
 // Rota Usuarios
 app.post("/users", async (req: Request, res: Response) => {
   try {
-    const {nome, email, senha, cpf, ativo} = req.body;
-    if(!nome || !email || !senha || !cpf) {
-      return res.status(400).json({error: "Campos obrigatórios"});
+    const { nome, email, senha, cpf, ativo } = req.body;
+    if (!nome || !email || !senha || !cpf) {
+      return res.status(400).json({ error: "Campos obrigatórios" });
     }
     const newUser = await prisma.usuario.create({
-      data: {nome, email, senha, cpf, ativo},
+      data: { nome, email, senha, cpf, ativo },
     });
     return res.status(201).json(newUser);
- } catch (error: any) {
-  if(error.code === "P2002") {
-    return res.status(409).json({error: "Usuário já existe com esse cpf ou email"})
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      return res
+        .status(409)
+        .json({ error: "Usuário já existe com esse cpf ou email" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
   }
-  return res.status(500).json({error: "Erro no servidor"})
- }
 });
 app.get("/users", async (req: Request, res: Response) => {
- try {
-   const listUsers = await prisma.usuario.findMany();
-   return res.status(200).json(listUsers);
- } catch {
-  return res.status(500).json({error: "Erro ao buscar usuários."})
- }
+  try {
+    const listUsers = await prisma.usuario.findMany();
+    return res.status(200).json(listUsers);
+  } catch {
+    return res.status(500).json({ error: "Erro ao buscar usuários." });
+  }
 });
 app.get("/users/:id", async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id)
-     if (isNaN(id)) {
-      return res.status(400).json({erro: "Id inválido"});
-     }
-     const findOneUser = await prisma.usuario.findUnique({where: {id}})
-     if(!findOneUser) {
-      return res.status(404).json({error: "Usuário não encontrado"})
-     }
-     return res.status(200).json(findOneUser)
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ erro: "Id inválido" });
+    }
+    const findOneUser = await prisma.usuario.findUnique({ where: { id } });
+    if (!findOneUser) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+    return res.status(200).json(findOneUser);
   } catch (error) {
-    return res.status(500).json({error: "Erro do servidor"})
+    return res.status(500).json({ error: "Erro do servidor" });
   }
 });
 
 app.put("/users/:id", async (req: Request, res: Response) => {
-  try{
+  try {
     const id = Number(req.params.id);
-    const {nome, email, senha} = req.body;
-    if(isNaN(id)) {
-      return res.status(404).json({error: "Id inválido"})
+    const { nome, email, senha } = req.body;
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Id inválido" });
     }
-    if(!nome || !email || !senha) {
-      return res.status(404).json({error: "Campos obrigatórios"});
+    if (!nome || !email || !senha) {
+      return res.status(404).json({ error: "Campos obrigatórios" });
     }
     const atualizarUser = await prisma.usuario.update({
-      where: {id},
-      data: {nome, email, senha},
+      where: { id },
+      data: { nome, email, senha },
     });
-    return res.status(200).json({usuario: atualizarUser, message: "Usuário atualizado com sucesso"});
-  } catch (error: any ){
-    if(error.code === 'P2025') {
-      return res.status(404).json({error: "Usuário não encontrado"})
+    return res.status(200).json({
+      usuario: atualizarUser,
+      message: "Usuário atualizado com sucesso",
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "Usuário não encontrado" });
     }
-    if(error.code === "P2022") {
-      return res.status(409).json({error: "Email já cadastrado"})
+    if (error.code === "P2022") {
+      return res.status(409).json({ error: "Email já cadastrado" });
     }
-    return res.status(500).json({error: "Erro no servidor"})
+    return res.status(500).json({ error: "Erro no servidor" });
   }
 });
 app.delete("/users/:id", async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    if(isNaN(id)) {
-      return res.status(400).json({error: "Id inválido"})
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Id inválido" });
     }
     const deletarUser = await prisma.usuario.delete({
-      where: {id},
+      where: { id },
     });
-    return res.status(200).json({usuario: deletarUser, message: "Usuário deletado com sucesso."})
+    return res
+      .status(200)
+      .json({ usuario: deletarUser, message: "Usuário deletado com sucesso." });
   } catch (error: any) {
-    if(error.code === "P2025")
-      return res.status(404).json({error: "Usuário não encontrado"})
+    if (error.code === "P2025")
+      return res.status(404).json({ error: "Usuário não encontrado" });
   }
-
 });
 // Fim rota usuario '-'
 // rota perfil
@@ -152,88 +158,91 @@ app.post("/perfil", async (request: Request, response: Response) => {
   return response.json(newPerfil);
 });
 app.get("/perfil", async (req: Request, res: Response) => {
- try {
-  const findAllPerfil = await prisma.perfil.findMany();
-  return res.status(200).json(findAllPerfil);
- } catch {
-  return res.status(500).json({error: "Erro ao buscar perfils"})
- }
+  try {
+    const findAllPerfil = await prisma.perfil.findMany();
+    return res.status(200).json(findAllPerfil);
+  } catch {
+    return res.status(500).json({ error: "Erro ao buscar perfils" });
+  }
 });
 app.get("/perfil/:id", async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    if(isNaN(id)) {
-      return res.status(400).json({error: "Id inválido"});
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Id inválido" });
     }
-    const findOnePerfil = await prisma.perfil.findFirst({where: {id}});
-    if(!findOnePerfil) {
-      return res.status(404).json({error: "Perfil não encontrado"});
+    const findOnePerfil = await prisma.perfil.findFirst({ where: { id } });
+    if (!findOnePerfil) {
+      return res.status(404).json({ error: "Perfil não encontrado" });
     }
     return res.status(200).json(findOnePerfil);
   } catch {
-    return res.status(500).json({error: "Erro no servidor"})
+    return res.status(500).json({ error: "Erro no servidor" });
   }
 });
 app.put("/perfil/:id", async (req: Request, res: Response) => {
-  try{
+  try {
     const id = Number(req.params.id);
-    const {role, descricao} = req.body;
+    const { role, descricao } = req.body;
 
-    if(isNaN(id)) {
-      return res.status(400).json({error: "Id inválido"})
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Id inválido" });
     }
-    if(!role || !descricao) {
-      return res.status(400).json({error: "Campos Obrigatórios"})
+    if (!role || !descricao) {
+      return res.status(400).json({ error: "Campos Obrigatórios" });
     }
     const atualizarPerfil = await prisma.perfil.update({
-      where: {id},
-      data: {role, descricao},
+      where: { id },
+      data: { role, descricao },
     });
-    return res.status(200).json({perfil: atualizarPerfil, message: "Perfil atualizado com sucesso"});
+    return res.status(200).json({
+      perfil: atualizarPerfil,
+      message: "Perfil atualizado com sucesso",
+    });
   } catch (error: any) {
     if (error.code === "P2025") {
-      return res.status(404).json({error: "Perfil não encontrado"});
+      return res.status(404).json({ error: "Perfil não encontrado" });
     }
-    if(error.code === "P2002") {
-      return res.status(409).json({error: "Perfil já existe com essa role"});
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Perfil já existe com essa role" });
     }
   }
 });
 app.delete("/perfil/:id", async (req: Request, res: Response) => {
   try {
-   const id = Number(req.params.id);
+    const id = Number(req.params.id);
     if (isNaN(id)) {
-      return res.status(404).json({error: "Id inválido"})
+      return res.status(404).json({ error: "Id inválido" });
     }
     const deletarPerfil = await prisma.perfil.delete({
-      where: {id},
+      where: { id },
     });
     return res.status(200).json({
       perfil: deletarPerfil,
-      message: "Perfil deletado com sucesso"
+      message: "Perfil deletado com sucesso",
     });
   } catch (error: any) {
-    if (error.code === "P2025"){
-      return res.status(404).json({error: "Perfil não encontrado"})
-    }   
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "Perfil não encontrado" });
+    }
   }
 });
 // fim rota perfil
 // Rota modulo
 app.post("/modulos", async (req: Request, res: Response) => {
   try {
-    const {nome, descricao} = req.body;
+    const { nome, descricao } = req.body;
 
-    if(!nome || !descricao) { 
-      return res.status(404).json({error: "Campos obrigatórios"})
+    if (!nome || !descricao) {
+      return res.status(404).json({ error: "Campos obrigatórios" });
     }
     const newModulo = await prisma.modulo.create({
-      data: {nome, descricao},
-    })
-    return res.status(201).json(newModulo)
-  } catch (error:any) {
-    if(error.code === "P2002") {
-      return res.status(409).json({error: "Já existe modulo com esse nome"});
+      data: { nome, descricao },
+    });
+    return res.status(201).json(newModulo);
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Já existe modulo com esse nome" });
     }
   }
 });
@@ -242,86 +251,90 @@ app.get("/modulos", async (req: Request, res: Response) => {
     const findAllModulos = await prisma.modulo.findMany();
     return res.status(200).json(findAllModulos);
   } catch {
-    return res.status(500).json({error: "Erro ao buscar modulos"})
+    return res.status(500).json({ error: "Erro ao buscar modulos" });
   }
 });
 app.get("/modulos/:id", async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    if(isNaN(id)) {
-      return res.status(400).json({error: "Id inválido"});
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Id inválido" });
     }
-    const findOneModulo = await prisma.modulo.findFirst({where: {id}});
-    if(!findOneModulo) {
-      return res.status(404).json({error: "Modulo não encontrado"})
+    const findOneModulo = await prisma.modulo.findFirst({ where: { id } });
+    if (!findOneModulo) {
+      return res.status(404).json({ error: "Modulo não encontrado" });
     }
-      return res.status(200).json(findOneModulo)
+    return res.status(200).json(findOneModulo);
   } catch {
-    return res.status(500).json({error: "Erro no servidor"})
+    return res.status(500).json({ error: "Erro no servidor" });
   }
 });
 app.put("/modulos/:id", async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const {nome, descricao} = req.body;
+    const { nome, descricao } = req.body;
 
-    if(isNaN(id)) {
-      return res.status(400).json({error: "Id inválido"})
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Id inválido" });
     }
-    if(!nome || !descricao) {
-      return res.status(400).json({error: "Campos obrigatórios"})
+    if (!nome || !descricao) {
+      return res.status(400).json({ error: "Campos obrigatórios" });
     }
     const atualizarModulo = await prisma.modulo.update({
-      where: {id},
-      data: {nome, descricao},
-    })
+      where: { id },
+      data: { nome, descricao },
+    });
     return res.status(200).json({
       modulo: atualizarModulo,
-      message: "Modulo atualizado com sucesso"
+      message: "Modulo atualizado com sucesso",
     });
   } catch (error: any) {
-    if(error.code === "P2025") {
-      return res.status(404).json({error: "Modulo não encontrado"})
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "Modulo não encontrado" });
     }
     if (error.code === "P2022") {
-      return res.status(409).json({error: "Já existe modulo com esse nome"})
+      return res.status(409).json({ error: "Já existe modulo com esse nome" });
     }
   }
 });
 app.delete("/modulos/:id", async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id)
-    if(isNaN(id)) {
-      return res.status(400).json({error: "Id inválido"});
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Id inválido" });
     }
-    const deleteModulo = await prisma.modulo.delete({where: {id}});
+    const deleteModulo = await prisma.modulo.delete({ where: { id } });
     return res.status(200).json({
       modulo: deleteModulo,
-      message: "Modulo deletado com sucesso"
+      message: "Modulo deletado com sucesso",
     });
   } catch (error: any) {
-    return res.status(404).json({error: "Modulo não encontrado"})
+    return res.status(404).json({ error: "Modulo não encontrado" });
   }
 });
 // FIm rota modulo
 // Rota usuário-perfil
 app.post("/user-perfil", async (req: Request, res: Response) => {
-  try{
-    const {usuario_id, perfil_id} = req.body;
+  try {
+    const { usuario_id, perfil_id } = req.body;
 
-    if(!usuario_id || !perfil_id) {
-      return res.status(400).json({error: "Campos obrigatórios"})
+    if (!usuario_id || !perfil_id) {
+      return res.status(400).json({ error: "Campos obrigatórios" });
     }
     const newUserPerfil = await prisma.usuarioPerfil.create({
-      data: {usuario_id, perfil_id},
+      data: { usuario_id, perfil_id },
       include: {
         usuario: {
           select: {
-            id: true, nome: true, email: true
+            id: true,
+            nome: true,
+            email: true,
           },
-        }, perfil: {
-            select: {
-              id: true, role: true
+        },
+        perfil: {
+          select: {
+            id: true,
+            role: true,
           },
         },
       },
@@ -329,15 +342,15 @@ app.post("/user-perfil", async (req: Request, res: Response) => {
     return res.status(201).json(newUserPerfil);
   } catch (error: any) {
     if (error.code === "P2003") {
-      return res.status(400).json({error: "Usuário ou perfil inválido"})
+      return res.status(400).json({ error: "Usuário ou perfil inválido" });
     }
-    if(error.code === "P2002") {
-      return res.status(409).json({error: "Relacionamento já existe"})
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Relacionamento já existe" });
     }
   }
 });
 
-// Em construção não mexer
+// 
 app.get("/user-perfil", async (request: Request, response: Response) => {
   const findAllUserPerfil = await prisma.usuarioPerfil.findMany({
     include: {
@@ -364,86 +377,512 @@ app.get("/user-perfil", async (request: Request, response: Response) => {
   return response.json(resultado);
 });
 
-// Em construção não mexer
-app.get("/user-perfil/:id", async (req: Request, res: Response) => {})
- 
+// GET por usuário_id e perfil_id
+app.get("/user-perfil/:usuario_id/:perfil_id", async (req: Request, res: Response) => {
+  try {
+    const { usuario_id, perfil_id } = req.params;
 
-// Rota fornecedores > feito por george albuquerque 
-  app.post("/fornecedores", async (req:Request, res:Response) => {
-    try{
-      const {nome, cnpj, email, telefone} = req.body;
-      if(!nome || !cnpj ||!email ||!telefone) {
-        return res.status(400).json({error: "Campos obrigatórios"});
-      }
-      const newFornecedor = await prisma.fornecedor.create({
-        data: {
-          nome, cnpj, email, telefone
-        },
-      });
-      return res.json(newFornecedor)
-    } catch (error){
-      return res.status(400).json({
-        error: "CNPJ já cadastrado"
-      })
+    if (isNaN(Number(usuario_id)) || isNaN(Number(perfil_id))) {
+      return res.status(400).json({ error: "IDs inválidos" });
     }
-  });
 
-  app.get("/fornecedores", async(req:Request, res:Response) => {
-    const findAllFornecedor = await prisma.fornecedor.findMany();
-    return res.json(findAllFornecedor);
-  })
-  
-  app.get("/fornecedores/:id", async(req:Request, res:Response) => {
-    try {
-      const fornecedor = await prisma.fornecedor.findUnique({
-        where: {id: Number(req.params.id)},
-      })
-      if(!fornecedor) {
-        return res.status(404).json({error: "Fornecedor não encontrado"})
-      }
-      return res.json(fornecedor)
-    } catch(error) {
-      return res.status(500).json({error: "Erro no servidor"})
-    }
-  });
-  app.put("/fornecedores/:id", async(req:Request, res:Response) => {
-    try {
-      const {nome, email, telefone} = req.body;
-      const atualizarFornecedor = await prisma.fornecedor.update({
-        data: {
-          nome, email, telefone
+    const userPerfil = await prisma.usuarioPerfil.findUnique({
+      where: {
+        usuario_id_perfil_id: {
+          usuario_id: Number(usuario_id),
+          perfil_id: Number(perfil_id),
         },
+      },
+      include: {
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+          },
+        },
+        perfil: {
+          select: {
+            id: true,
+            role: true,
+            descricao: true,
+          },
+        },
+      },
+    });
+
+    if (!userPerfil) {
+      return res.status(404).json({ error: "Relacionamento não encontrado" });
+    }
+
+    return res.status(200).json(userPerfil);
+  } catch (error) {
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+//  Atualizar relacionamento usuario-perfil
+app.put("/user-perfil/:usuario_id/:perfil_id", async (req: Request, res: Response) => {
+  try {
+    const { usuario_id, perfil_id } = req.params;
+    const { novo_usuario_id, novo_perfil_id } = req.body;
+
+    if (isNaN(Number(usuario_id)) || isNaN(Number(perfil_id))) {
+      return res.status(400).json({ error: "IDs inválidos" });
+    }
+
+    if (!novo_usuario_id && !novo_perfil_id) {
+      return res.status(400).json({ error: "Informe pelo menos um novo ID" });
+    }
+
+    // Verificar se a relação atual existe
+    const relacaoExistente = await prisma.usuarioPerfil.findUnique({
+      where: {
+        usuario_id_perfil_id: {
+          usuario_id: Number(usuario_id),
+          perfil_id: Number(perfil_id),
+        },
+      },
+    });
+
+    if (!relacaoExistente) {
+      return res.status(404).json({ error: "Relacionamento não encontrado" });
+    }
+
+    // Como a chave é composta, precisamos deletar a antiga e criar uma nova
+    const usuarioUpdate = novo_usuario_id ? Number(novo_usuario_id) : Number(usuario_id);
+    const perfilUpdate = novo_perfil_id ? Number(novo_perfil_id) : Number(perfil_id);
+
+    await prisma.usuarioPerfil.delete({
+      where: {
+        usuario_id_perfil_id: {
+          usuario_id: Number(usuario_id),
+          perfil_id: Number(perfil_id),
+        },
+      },
+    });
+
+    const relacaoAtualizada = await prisma.usuarioPerfil.create({
+      data: {
+        usuario_id: usuarioUpdate,
+        perfil_id: perfilUpdate,
+      },
+      include: {
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+          },
+        },
+        perfil: {
+          select: {
+            id: true,
+            role: true,
+            descricao: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      relacionamento: relacaoAtualizada,
+      message: "Relacionamento atualizado com sucesso",
+    });
+  } catch (error: any) {
+    if (error.code === "P2003") {
+      return res.status(400).json({ error: "Usuário ou perfil inválido" });
+    }
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Esse relacionamento já existe" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+// Deletar relacionamento usuario-perfil
+app.delete("/user-perfil/:usuario_id/:perfil_id", async (req: Request, res: Response) => {
+  try {
+    const { usuario_id, perfil_id } = req.params;
+
+    if (isNaN(Number(usuario_id)) || isNaN(Number(perfil_id))) {
+      return res.status(400).json({ error: "IDs inválidos" });
+    }
+
+    const relacionamentoDeletado = await prisma.usuarioPerfil.delete({
+      where: {
+        usuario_id_perfil_id: {
+          usuario_id: Number(usuario_id),
+          perfil_id: Number(perfil_id),
+        },
+      },
+      include: {
+        usuario: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+          },
+        },
+        perfil: {
+          select: {
+            id: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      relacionamento: relacionamentoDeletado,
+      message: "Relacionamento deletado com sucesso",
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "Relacionamento não encontrado" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+// Rota fornecedores > feito por george albuquerque
+app.post("/fornecedores", async (req: Request, res: Response) => {
+  try {
+    const { nome, cnpj, email, telefone } = req.body;
+    if (!nome || !cnpj || !email || !telefone) {
+      return res.status(400).json({ error: "Campos obrigatórios" });
+    }
+    const newFornecedor = await prisma.fornecedor.create({
+      data: {
+        nome,
+        cnpj,
+        email,
+        telefone,
+      },
+    });
+    return res.json(newFornecedor);
+  } catch (error) {
+    return res.status(400).json({
+      error: "CNPJ já cadastrado",
+    });
+  }
+});
+
+app.get("/fornecedores", async (req: Request, res: Response) => {
+  const findAllFornecedor = await prisma.fornecedor.findMany();
+  return res.json(findAllFornecedor);
+});
+
+app.get("/fornecedores/:id", async (req: Request, res: Response) => {
+  try {
+    const fornecedor = await prisma.fornecedor.findUnique({
+      where: { id: Number(req.params.id) },
+    });
+    if (!fornecedor) {
+      return res.status(404).json({ error: "Fornecedor não encontrado" });
+    }
+    return res.json(fornecedor);
+  } catch (error) {
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+app.put("/fornecedores/:id", async (req: Request, res: Response) => {
+  try {
+    const { nome, email, telefone } = req.body;
+    const atualizarFornecedor = await prisma.fornecedor.update({
+      data: {
+        nome,
+        email,
+        telefone,
+      },
+      where: {
+        id: Number(req.params.id),
+      },
+    });
+    return res.json(atualizarFornecedor);
+  } catch (error) {
+    if (error) {
+      return res
+        .status(404)
+        .json({ error: "Atualize se necessario só o nome, email e telefone" });
+    }
+    res.status(500).json({
+      error: "Erro no servidor",
+    });
+  }
+});
+app.delete("/fornecedores/:id", async (req: Request, res: Response) => {
+  try {
+    const deletarFornecedor = await prisma.fornecedor.delete({
+      where: { id: Number(req.params.id) },
+    });
+    return res.json({
+      fornecedor: deletarFornecedor,
+      message: "Usuário deletado com sucesso!",
+    });
+  } catch (error: any) {
+    if (error) {
+      return res.status(404).json({ error: "Fornecedor não encontrado" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+// fim rota fornecedor
+
+// rota materia-fornecedor > feito por george albuquerque
+app.post("/materia-fornecedor", async (req: Request, res: Response) => {
+  try {
+    const { materia_prima_id, fornecedor_id } = req.body;
+
+    if (!materia_prima_id || !fornecedor_id) {
+      return res.status(400).json({ error: "Campos obrigatórios" });
+    }
+    const relation = await prisma.materiaFornecedor.create({
+      data: {
+        materia_prima_id,
+        fornecedor_id,
+      },
+    });
+    return res.json(relation);
+  } catch (erro: any) {
+    if (erro.code === "P2002") {
+      return res.status(400).json({ error: "Relação já existe" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+app.get("/materia-fornecedor", async (req: Request, res: Response) => {
+  try {
+    const list = await prisma.materiaFornecedor.findMany({
+      include: { materia: true, fornecedor: true },
+    });
+    return res.json(list);
+  } catch (error) {
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+app.get(
+  "/materia-fornecedor/:materiaid/:fornecedorid",
+  async (req: Request, res: Response) => {
+    try {
+      const { materiaid, fornecedorid } = req.params;
+
+      const relacao = await prisma.materiaFornecedor.findUnique({
         where: {
-          id: Number(req.params.id),
+          materia_prima_id_fornecedor_id: {
+            materia_prima_id: Number(materiaid),
+            fornecedor_id: Number(fornecedorid),
+          },
+        },
+        include: { materia: true, fornecedor: true },
+      });
+
+      if (!relacao) {
+        return res.status(404).json({ error: "Relação não encontrada" });
+      }
+      return res.status(200).json(relacao);
+    } catch (error) {
+      return res.status(500).json({ error: "Erro no servidor" });
+    }
+  },
+);
+
+app.put(
+  "/materia-fornecedor/:materiaid/:fornecedorid",
+  async (req: Request, res: Response) => {
+    try {
+      const { materiaid, fornecedorid } = req.params;
+      const { nova_materia_id, novo_fornecedor_id } = req.body;
+
+      if (!nova_materia_id && !novo_fornecedor_id) {
+        return res.status(400).json({ error: "Informe pelo menos um novo ID" });
+      }
+
+      // Verificar se a relação atual existe
+      const relacaoExistente = await prisma.materiaFornecedor.findUnique({
+        where: {
+          materia_prima_id_fornecedor_id: {
+            materia_prima_id: Number(materiaid),
+            fornecedor_id: Number(fornecedorid),
+          },
         },
       });
-      return res.json(atualizarFornecedor);
-    } catch(error) {
-      if(error){
-        return res.status(404).json({error: "Atualize se necessario só o nome, email e telefone"})
+
+      if (!relacaoExistente) {
+        return res.status(404).json({ error: "Relação não encontrada" });
       }
-      res.status(500).json({
-        error: "Erro no servidor"
-      })
-    }
-  });
-  app.delete("/fornecedores/:id", async(req:Request, res:Response) => {
-    try{
-      const deletarFornecedor = await prisma.fornecedor.delete({
-        where: {id: Number(req.params.id)},
+
+      // Como a chave é composta, precisamos deletar a antiga e criar uma nova
+      const materiaUpdate = nova_materia_id
+        ? Number(nova_materia_id)
+        : Number(materiaid);
+      const fornecedorUpdate = novo_fornecedor_id
+        ? Number(novo_fornecedor_id)
+        : Number(fornecedorid);
+
+      await prisma.materiaFornecedor.delete({
+        where: {
+          materia_prima_id_fornecedor_id: {
+            materia_prima_id: Number(materiaid),
+            fornecedor_id: Number(fornecedorid),
+          },
+        },
       });
-      return res.json({ message: "Usuário deletado com sucesso!" });
+
+      const relacaoAtualizada = await prisma.materiaFornecedor.create({
+        data: {
+          materia_prima_id: materiaUpdate,
+          fornecedor_id: fornecedorUpdate,
+        },
+        include: { materia: true, fornecedor: true },
+      });
+
+      return res.status(200).json({
+        relacao: relacaoAtualizada,
+        message: "Relação atualizada com sucesso",
+      });
     } catch (error: any) {
-      if(error){
-        return res.status(404).json({error: "Fornecedor não encontrado"})
+      if (error.code === "P2003") {
+        return res
+          .status(400)
+          .json({ error: "Materia prima ou fornecedor inválido" });
       }
-      return res.status(500).json({error:"Erro no servidor"})
+      if (error.code === "P2002") {
+        return res.status(409).json({ error: "Essa relação já existe" });
+      }
+      return res.status(500).json({ error: "Erro no servidor" });
     }
-  })
+  },
+);
 
+app.delete(
+  "/materia-fornecedor/:materiaid/:fornecedorid",
+  async (req: Request, res: Response) => {
+    try {
+      const { materiaid, fornecedorid } = req.params;
 
+      const relacaoDeletada = await prisma.materiaFornecedor.delete({
+        where: {
+          materia_prima_id_fornecedor_id: {
+            materia_prima_id: Number(materiaid),
+            fornecedor_id: Number(fornecedorid),
+          },
+        },
+      });
 
+      return res.status(200).json({
+        relacao: relacaoDeletada,
+        message: "Relação deletada com sucesso",
+      });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ error: "Relação não encontrada" });
+      }
+      return res.status(500).json({ error: "Erro no servidor" });
+    }
+  },
+);
+// fim rota materia-fornecedor
 
+// rota materia-prima
+app.post("/materia-prima", async (req: Request, res: Response) => {
+  try {
+    const { nome, categoria, unidade, estoque_minimo, ativo } = req.body;
 
+    if (!nome || !categoria || !unidade || estoque_minimo === undefined) {
+      return res.status(400).json({ error: "Campos obrigatórios" });
+    }
+
+    const newMateria = await prisma.materiaPrima.create({
+      data: {
+        nome,
+        categoria,
+        unidade,
+        estoque_minimo: Number(estoque_minimo),
+        ativo,
+      },
+    });
+    return res.status(201).json(newMateria);
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Matéria-prima já existe" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.get("/materia-prima", async (req: Request, res: Response) => {
+  try {
+    const list = await prisma.materiaPrima.findMany();
+    return res.status(200).json(list);
+  } catch {
+    return res.status(500).json({ error: "Erro ao buscar matérias primas" });
+  }
+});
+
+app.get("/materia-prima/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Id inválido" });
+
+    const materia = await prisma.materiaPrima.findUnique({ where: { id } });
+    if (!materia)
+      return res.status(404).json({ error: "Matéria-prima não encontrada" });
+    return res.status(200).json(materia);
+  } catch {
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.put("/materia-prima/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { nome, categoria, unidade, estoque_minimo, ativo } = req.body;
+    if (isNaN(id)) return res.status(400).json({ error: "Id inválido" });
+    if (!nome || !categoria || !unidade || estoque_minimo === undefined) {
+      return res.status(400).json({ error: "Campos obrigatórios" });
+    }
+
+    const updated = await prisma.materiaPrima.update({
+      where: { id },
+      data: {
+        nome,
+        categoria,
+        unidade,
+        estoque_minimo: Number(estoque_minimo),
+        ativo,
+      },
+    });
+    return res
+      .status(200)
+      .json({
+        materia: updated,
+        message: "Matéria-prima atualizada com sucesso",
+      });
+  } catch (error: any) {
+    if (error.code === "P2025")
+      return res.status(404).json({ error: "Matéria-prima não encontrada" });
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.delete("/materia-prima/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Id inválido" });
+
+    const deleted = await prisma.materiaPrima.delete({ where: { id } });
+    return res
+      .status(200)
+      .json({
+        materia: deleted,
+        message: "Matéria-prima deletada com sucesso",
+      });
+  } catch (error: any) {
+    if (error.code === "P2025")
+      return res.status(404).json({ error: "Matéria-prima não encontrada" });
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
 
 app.listen(3000, () => console.log("Servidor rodando na porta 3000."));

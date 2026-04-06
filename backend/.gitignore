@@ -5,3 +5,12 @@ node_modules
 docker-compose.yml
 
 /src/generated
+
+
+.agents
+skills-lock.json
+
+test-materia-fornecedor.http
+test-materia-prima.http
+user-perfil-tests.rest
+USUARIO-PERFIL-EXPLICACAO.md
