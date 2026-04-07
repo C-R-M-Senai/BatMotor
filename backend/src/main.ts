@@ -846,5 +846,273 @@ app.delete("/materia-prima/:id", async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Erro no servidor" });
   }
 });
+// fim rota materiaprima
+// rota permissaomodulo - gustavo
+
+app.post("/permissao-modulo", async (req: Request, res: Response) => {
+  try {
+    const { perfil_id, modulo_id, pode_ler, pode_criar, pode_atualizar, pode_excluir } = req.body;
+
+    if (!perfil_id || !modulo_id) {
+      return res.status(400).json({ error: "Campos perfil_id e modulo_id obrigatorios" });
+    }
+
+    const newPermissao = await prisma.permissaoModulo.create({
+      data: {
+        perfil_id: Number(perfil_id),
+        modulo_id: Number(modulo_id),
+        pode_ler: pode_ler ?? false,
+        pode_criar: pode_criar ?? false,
+        pode_atualizar: pode_atualizar ?? false,
+        pode_excluir: pode_excluir ?? false,
+      },
+      include: {
+        perfil: true,
+        modulo: true,
+      },
+    });
+
+    return res.status(201).json(newPermissao);
+  } catch (error: any) {
+    if (error.code === "P2003") {
+      return res.status(400).json({ error: "Perfil ou Modulo invalido" });
+    }
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Permissão para esse perfil e modulo ja existe" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.get("/permissao-modulo", async (req: Request, res: Response) => {
+  try {
+    const findAllPermissoes = await prisma.permissaoModulo.findMany({
+      include: {
+        perfil: true,
+        modulo: true,
+      },
+    });
+    return res.status(200).json(findAllPermissoes);
+  } catch {
+    return res.status(500).json({ error: "Erro ao buscar permissões" });
+  }
+});
+
+app.get("/permissao-modulo/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Id invalido" });
+
+    const findOnePermissao = await prisma.permissaoModulo.findUnique({
+      where: { id },
+      include: { perfil: true, modulo: true },
+    });
+
+    if (!findOnePermissao) return res.status(404).json({ error: "Permissão não encontrada" });
+
+    return res.status(200).json(findOnePermissao);
+  } catch {
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.put("/permissao-modulo/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { perfil_id, modulo_id, pode_ler, pode_criar, pode_atualizar, pode_excluir } = req.body;
+
+    if (isNaN(id)) return res.status(400).json({ error: "Id inválido" });
+
+    const atualizarPermissao = await prisma.permissaoModulo.update({
+      where: { id },
+      data: {
+        perfil_id: perfil_id ? Number(perfil_id) : undefined,
+        modulo_id: modulo_id ? Number(modulo_id) : undefined,
+        pode_ler,
+        pode_criar,
+        pode_atualizar,
+        pode_excluir,
+      },
+      include: { perfil: true, modulo: true },
+    });
+
+    return res.status(200).json({
+      permissao: atualizarPermissao,
+      message: "Permissão atualizada com sucesso",
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") return res.status(404).json({ error: "Permissão não encontrada" });
+    if (error.code === "P2003") return res.status(400).json({ error: "Perfil ou Modulo invalido" });
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.delete("/permissao-modulo/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Id invalido" });
+
+    const deletarPermissao = await prisma.permissaoModulo.delete({ where: { id } });
+
+    return res.status(200).json({
+      permissao: deletarPermissao,
+      message: "Permissão deletada com sucesso",
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") return res.status(404).json({ error: "Permissão não encontrada" });
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+//fim rota permissaomodulo
+
+// rota estoqueatual - gustavo
+app.post("/movimentacao", async (req: Request, res: Response) => {
+  try {
+    const { materia_prima_id, tipo, quantidade, motivo, usuario_id } = req.body;
+
+    if (!materia_prima_id || !tipo || quantidade === undefined || !usuario_id) {
+      return res.status(400).json({ error: "Campos obrigatórios: Materia Prima, tipo, quantidade, usuario" });
+    }
+
+    if (tipo !== "ENTRADA" && tipo !== "SAIDA") {
+      return res.status(400).json({ error: "O tipo deve ser 'Entrada' ou 'Saida'" });
+    }
+
+    const qtdNumero = Number(quantidade);
+    const materiaIdNum = Number(materia_prima_id);
+
+    // evitar estoque negativo na saidaa
+    if (tipo === "SAIDA") {
+      const estoqueAtual = await prisma.estoqueAtual.findUnique({
+        where: { materia_prima_id: materiaIdNum }
+      });
+      
+      if (!estoqueAtual || estoqueAtual.quantidade < qtdNumero) {
+        return res.status(400).json({ error: "Estoque insuficiente para essa saida." });
+      }
+    }
+
+    // registro movimentação no historico
+    const newMovimentacao = await prisma.movimentacao.create({
+      data: {
+        materia_prima_id: materiaIdNum,
+        tipo,
+        quantidade: qtdNumero,
+        motivo,
+        usuario_id: Number(usuario_id),
+      },
+      include: {
+        materia: true,
+        usuario: { select: { id: true, nome: true, email: true } },
+      },
+    });
+
+    // atualiza o estoque auto - aux ia
+    await prisma.estoqueAtual.upsert({
+      where: { materia_prima_id: materiaIdNum },
+      update: {
+        quantidade: tipo === "ENTRADA" ? { increment: qtdNumero } : { decrement: qtdNumero },
+      },
+      create: {
+        materia_prima_id: materiaIdNum,
+        quantidade: tipo === "ENTRADA" ? qtdNumero : 0, 
+      },
+    });
+
+    return res.status(201).json(newMovimentacao);
+  } catch (error: any) {
+    if (error.code === "P2003") {
+      return res.status(400).json({ error: "Materia-prima ou Usuário invalido" });
+    }
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.get("/movimentacao", async (req: Request, res: Response) => {
+  try {
+    const listMovimentacoes = await prisma.movimentacao.findMany({
+      include: {
+        materia: true,
+        usuario: { select: { id: true, nome: true, email: true } },
+      },
+      orderBy: { data_atual: 'desc' }
+    });
+    return res.status(200).json(listMovimentacoes);
+  } catch {
+    return res.status(500).json({ error: "Erro ao buscar movimentaçoes" });
+  }
+});
+
+app.get("/movimentacao/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Id invalido" });
+
+    const movimentacao = await prisma.movimentacao.findUnique({
+      where: { id },
+      include: {
+        materia: true,
+        usuario: { select: { id: true, nome: true, email: true } },
+      },
+    });
+
+    if (!movimentacao) return res.status(404).json({ error: "Movimentação não encontrada" });
+
+    return res.status(200).json(movimentacao);
+  } catch {
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.put("/movimentacao/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { materia_prima_id, tipo, quantidade, motivo, usuario_id } = req.body;
+
+    if (isNaN(id)) return res.status(400).json({ error: "Id inválido" });
+    if (tipo && tipo !== "ENTRADA" && tipo !== "SAIDA") {
+      return res.status(400).json({ error: "O tipo deve ser 'Entrada' ou 'Saida'" });
+    }
+
+    const atualizarMovimentacao = await prisma.movimentacao.update({
+      where: { id },
+      data: {
+        materia_prima_id: materia_prima_id ? Number(materia_prima_id) : undefined,
+        tipo,
+        quantidade: quantidade !== undefined ? Number(quantidade) : undefined,
+        motivo,
+        usuario_id: usuario_id ? Number(usuario_id) : undefined,
+      },
+      include: { materia: true, usuario: { select: { id: true, nome: true } } },
+    });
+
+    return res.status(200).json({
+      movimentacao: atualizarMovimentacao,
+      message: "Movimentação atualizada",
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") return res.status(404).json({ error: "Movimentação não encontrada" });
+    if (error.code === "P2003") return res.status(400).json({ error: "Materia-prima ou Usuario invalido" });
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+app.delete("/movimentacao/:id", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Id inválido" });
+
+    const deletarMovimentacao = await prisma.movimentacao.delete({ where: { id } });
+
+    return res.status(200).json({
+      movimentacao: deletarMovimentacao,
+      message: "Movimentação deletada",
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") return res.status(404).json({ error: "Movimentação não encontrada" });
+    return res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
 
 app.listen(3000, () => console.log("Servidor rodando na porta 3000."));
