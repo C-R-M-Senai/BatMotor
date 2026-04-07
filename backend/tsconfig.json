@@ -5,6 +5,10 @@
     "moduleResolution": "bundler",
     "target": "ES2023",
     "strict": true,
-    "esModuleInterop": true
-  }
+    "esModuleInterop": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/main.legado.ts"]
 }

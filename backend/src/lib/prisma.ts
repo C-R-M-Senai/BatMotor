@@ -1,5 +1,8 @@
-// importar para o arquivo main.ts, é a conexão com o db 
-// usou git clone, usar npx prisma generate para gerar a pasta generated!
+/**
+ * Cliente Prisma com adaptador MariaDB/MySQL.
+ * Usado pelos **services**; as rotas não importam o Prisma diretamente.
+ * Após `git clone`: `npx prisma generate` para gerar `src/generated/prisma`.
+ */
 
 import "dotenv/config";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";

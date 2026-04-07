@@ -1,0 +1,188 @@
+/**
+ * Registro central de todas as rotas HTTP.
+ *
+ * Convenções deste projeto:
+ * - `POST /auth/login` é público (sem JWT).
+ * - Demais endpoints exigem `Authorization: Bearer <token>` (middleware `authenticate`).
+ * - Papéis (ADMIN / GERENTE / FUNCIONARIO) são aplicados com `requireRole`.
+ *
+ * Os caminhos foram mantidos iguais à versão monolítica (`/users`, `/perfil`, …)
+ * para não quebrar testes e front-end que já apontavam para essas URLs.
+ */
+import type { Express } from "express";
+import { Router } from "express";
+import { Role } from "../generated/prisma/client";
+import * as authController from "../controllers/auth.controller";
+import * as usuarioController from "../controllers/usuario.controller";
+import * as perfilController from "../controllers/perfil.controller";
+import * as moduloController from "../controllers/modulo.controller";
+import * as usuarioPerfilController from "../controllers/usuarioPerfil.controller";
+import * as fornecedorController from "../controllers/fornecedor.controller";
+import * as materiaFornecedorController from "../controllers/materiaFornecedor.controller";
+import * as materiaPrimaController from "../controllers/materiaPrima.controller";
+import * as permissaoModuloController from "../controllers/permissaoModulo.controller";
+import * as movimentacaoController from "../controllers/movimentacao.controller";
+import * as estoqueController from "../controllers/estoque.controller";
+import * as testeController from "../controllers/teste.controller";
+import { authenticate } from "../middlewares/authenticate";
+import { requireRole } from "../middlewares/authorize";
+import { asyncHandler } from "../utils/asyncHandler";
+
+const adminOnly = requireRole(Role.ADMIN);
+const adminOuGerente = requireRole(Role.ADMIN, Role.GERENTE);
+
+export function registerRoutes(app: Express): void {
+  app.post("/auth/login", asyncHandler(authController.login));
+
+  const r = Router();
+  r.use(authenticate);
+
+  /* -------- Usuários: gestão de contas (cadastro feito pela equipe, não pelo login público) -------- */
+  r.get("/users", adminOuGerente, asyncHandler(usuarioController.list));
+  r.get("/users/:id", asyncHandler(usuarioController.getById));
+  r.post("/users", adminOnly, asyncHandler(usuarioController.create));
+  r.put("/users/:id", adminOnly, asyncHandler(usuarioController.update));
+  r.delete("/users/:id", adminOnly, asyncHandler(usuarioController.remove));
+
+  /* -------- Perfis, módulos, permissões e vínculo usuário–perfil: configuração do sistema -------- */
+  r.post("/perfil", adminOnly, asyncHandler(perfilController.create));
+  r.get("/perfil", adminOnly, asyncHandler(perfilController.list));
+  r.get("/perfil/:id", adminOnly, asyncHandler(perfilController.getById));
+  r.put("/perfil/:id", adminOnly, asyncHandler(perfilController.update));
+  r.delete("/perfil/:id", adminOnly, asyncHandler(perfilController.remove));
+
+  r.post("/modulos", adminOnly, asyncHandler(moduloController.create));
+  r.get("/modulos", adminOnly, asyncHandler(moduloController.list));
+  r.get("/modulos/:id", adminOnly, asyncHandler(moduloController.getById));
+  r.put("/modulos/:id", adminOnly, asyncHandler(moduloController.update));
+  r.delete("/modulos/:id", adminOnly, asyncHandler(moduloController.remove));
+
+  r.post("/user-perfil", adminOnly, asyncHandler(usuarioPerfilController.create));
+  r.get("/user-perfil", adminOnly, asyncHandler(usuarioPerfilController.list));
+  r.get(
+    "/user-perfil/:usuario_id/:perfil_id",
+    adminOnly,
+    asyncHandler(usuarioPerfilController.getByPair),
+  );
+  r.put(
+    "/user-perfil/:usuario_id/:perfil_id",
+    adminOnly,
+    asyncHandler(usuarioPerfilController.updatePair),
+  );
+  r.delete(
+    "/user-perfil/:usuario_id/:perfil_id",
+    adminOnly,
+    asyncHandler(usuarioPerfilController.removePair),
+  );
+
+  r.post(
+    "/permissao-modulo",
+    adminOnly,
+    asyncHandler(permissaoModuloController.create),
+  );
+  r.get(
+    "/permissao-modulo",
+    adminOnly,
+    asyncHandler(permissaoModuloController.list),
+  );
+  r.get(
+    "/permissao-modulo/:id",
+    adminOnly,
+    asyncHandler(permissaoModuloController.getById),
+  );
+  r.put(
+    "/permissao-modulo/:id",
+    adminOnly,
+    asyncHandler(permissaoModuloController.update),
+  );
+  r.delete(
+    "/permissao-modulo/:id",
+    adminOnly,
+    asyncHandler(permissaoModuloController.remove),
+  );
+
+  /* -------- Almoxarifado: consulta para todos autenticados; alterações para ADMIN e GERENTE -------- */
+  r.post(
+    "/fornecedores",
+    adminOuGerente,
+    asyncHandler(fornecedorController.create),
+  );
+  r.get("/fornecedores", asyncHandler(fornecedorController.list));
+  r.get("/fornecedores/:id", asyncHandler(fornecedorController.getById));
+  r.put(
+    "/fornecedores/:id",
+    adminOuGerente,
+    asyncHandler(fornecedorController.update),
+  );
+  r.delete(
+    "/fornecedores/:id",
+    adminOuGerente,
+    asyncHandler(fornecedorController.remove),
+  );
+
+  r.post(
+    "/materia-fornecedor",
+    adminOuGerente,
+    asyncHandler(materiaFornecedorController.create),
+  );
+  r.get("/materia-fornecedor", asyncHandler(materiaFornecedorController.list));
+  r.get(
+    "/materia-fornecedor/:materiaid/:fornecedorid",
+    asyncHandler(materiaFornecedorController.getByPair),
+  );
+  r.put(
+    "/materia-fornecedor/:materiaid/:fornecedorid",
+    adminOuGerente,
+    asyncHandler(materiaFornecedorController.updatePair),
+  );
+  r.delete(
+    "/materia-fornecedor/:materiaid/:fornecedorid",
+    adminOuGerente,
+    asyncHandler(materiaFornecedorController.removePair),
+  );
+
+  r.post(
+    "/materia-prima",
+    adminOuGerente,
+    asyncHandler(materiaPrimaController.create),
+  );
+  r.get("/materia-prima", asyncHandler(materiaPrimaController.list));
+  r.get("/materia-prima/:id", asyncHandler(materiaPrimaController.getById));
+  r.put(
+    "/materia-prima/:id",
+    adminOuGerente,
+    asyncHandler(materiaPrimaController.update),
+  );
+  r.delete(
+    "/materia-prima/:id",
+    adminOuGerente,
+    asyncHandler(materiaPrimaController.remove),
+  );
+
+  /* -------- Movimentação: qualquer usuário logado registra entrada/saída; edição/exclusão mais restritiva -------- */
+  r.post("/movimentacao", asyncHandler(movimentacaoController.create));
+  r.get("/movimentacao", asyncHandler(movimentacaoController.list));
+  r.get("/movimentacao/:id", asyncHandler(movimentacaoController.getById));
+  r.put(
+    "/movimentacao/:id",
+    adminOuGerente,
+    asyncHandler(movimentacaoController.update),
+  );
+  r.delete(
+    "/movimentacao/:id",
+    adminOuGerente,
+    asyncHandler(movimentacaoController.remove),
+  );
+
+  /** Saldo atual por matéria-prima (nova rota em relação ao arquivo único antigo). */
+  r.get("/estoque-atual", asyncHandler(estoqueController.list));
+
+  /* -------- Modelo de exemplo no schema (opcional em produção) -------- */
+  r.get("/teste", adminOnly, asyncHandler(testeController.list));
+  r.get("/teste/:id", adminOnly, asyncHandler(testeController.getById));
+  r.post("/teste", adminOnly, asyncHandler(testeController.create));
+  r.put("/teste/:id", adminOnly, asyncHandler(testeController.update));
+  r.delete("/teste/:id", adminOnly, asyncHandler(testeController.remove));
+
+  app.use(r);
+}
