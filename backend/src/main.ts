@@ -4,44 +4,6 @@ import { prisma } from "./lib/prisma";
 const app = express();
 app.use(express.json());
 
-// Rotas testes para se basear
-
-// app.get("/test", async (request:Request, response: Response)=>{
-//   const tests = await prisma.teste.findMany();
-//   return response.json(tests)
-// })
-// app.get("/test/:id", async (request: Request, response:Response) => {
-//   const oneTest = await prisma.teste.findFirst();
-//   return response.json(oneTest);
-// })
-// app.post("/test", async(request:Request, response: Response) => {
-//   const {nome, email, senha} = request.body
-//   const newTest = await prisma.teste.create({
-//     data: {
-//       nome, email, senha
-//     }
-//   })
-//   return response.json(newTest)
-// })
-// app.put("/test/:id", async(request:Request, response:Response) => {
-//   const {nome, email, senha} = request.body
-
-//   const updateTest = await prisma.teste.update({
-//     data: {
-//       nome, email, senha
-//     },
-//     where: {
-//       id: Number(request.params.id)
-//     }
-//   });
-//   return response.json(updateTest);
-// })
-// app.delete("/test/:id", async(request: Request, response:Response) => {
-//   await prisma.teste.delete({
-//     where: {id: Number(request.params.id)}
-//   })
-// })
-
 // Rota Usuarios
 app.post("/users", async (req: Request, res: Response) => {
   try {
