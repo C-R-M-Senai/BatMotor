@@ -9,6 +9,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
+
 }
 
 model Teste {
@@ -19,19 +20,21 @@ model Teste {
 }
 
 enum Role {
+  ADMIN
   GERENTE
   FUNCIONARIO
 }
 
 model Usuario {
   id Int @id @default(autoincrement())
-  nome String 
+  nome String
   email String  @unique
   senha String
   cpf String @unique
   ativo Boolean @default(true)
   data_atual DateTime @default(now())
   usuarioPerfis UsuarioPerfil[]
+  movimentacoes Movimentacao[]
 }
 
 model Modulo {
@@ -60,6 +63,8 @@ model MateriaPrima {
   ativo Boolean @default(true)
 
   materiasFornecedores MateriaFornecedor[]
+  estoque EstoqueAtual?
+  movimentacoes Movimentacao[]
 }
 
 model Fornecedor {
@@ -72,35 +77,60 @@ model Fornecedor {
   materiasFornecedores MateriaFornecedor[]
 }
 
- model UsuarioPerfil {
+model UsuarioPerfil {
   usuario_id Int
   perfil_id Int
 
   usuario Usuario @relation(fields: [usuario_id], references: [id])
-  perfil Perfil @relation(fields: [perfil_id], references: [id]) 
+  perfil Perfil @relation(fields: [perfil_id], references: [id])
 
-  @@id([usuario_id, perfil_id]) // @@id
- }
+  @@id([usuario_id, perfil_id])
+}
 
-  model MateriaFornecedor {
-    materia_prima_id Int
-    fornecedor_id Int
+model MateriaFornecedor {
+  materia_prima_id Int
+  fornecedor_id Int
 
-    materia MateriaPrima @relation(fields: [materia_prima_id], references: [id])
-    fornecedor Fornecedor @relation(fields: [fornecedor_id], references: [id])
+  materia MateriaPrima @relation(fields: [materia_prima_id], references: [id])
+  fornecedor Fornecedor @relation(fields: [fornecedor_id], references: [id])
 
-    @@id([materia_prima_id, fornecedor_id])
-  }
+  @@id([materia_prima_id, fornecedor_id])
+}
 
-  model PermissaoModulo {
-    id Int @id @default(autoincrement())
-    perfil_id Int
-    modulo_id Int
-    pode_ler Boolean @default(false)
-    pode_criar Boolean @default(false)
-    pode_atualizar Boolean @default(false) 
-    pode_excluir Boolean @default(false)
+model PermissaoModulo {
+  id Int @id @default(autoincrement())
+  perfil_id Int
+  modulo_id Int
+  pode_ler Boolean @default(false)
+  pode_criar Boolean @default(false)
+  pode_atualizar Boolean @default(false)
+  pode_excluir Boolean @default(false)
 
-    perfil Perfil @relation(fields: [perfil_id], references: [id])
-    modulo Modulo @relation(fields: [modulo_id], references: [id])
-  }
+  perfil Perfil @relation(fields: [perfil_id], references: [id])
+  modulo Modulo @relation(fields: [modulo_id], references: [id])
+}
+
+model EstoqueAtual {
+  materia_prima_id Int   @id
+  quantidade       Int   @default(0)
+
+  materia MateriaPrima @relation(fields: [materia_prima_id], references: [id])
+}
+
+model Movimentacao {
+  id               Int       @id @default(autoincrement())
+  materia_prima_id Int
+  tipo             TipoMovimentacao
+  quantidade       Int
+  motivo           String?
+  usuario_id       Int
+  data_atual       DateTime  @default(now())
+
+  materia MateriaPrima @relation(fields: [materia_prima_id], references: [id])
+  usuario Usuario      @relation(fields: [usuario_id], references: [id])
+}
+
+enum TipoMovimentacao {
+  ENTRADA
+  SAIDA
+}
