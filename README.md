@@ -269,6 +269,8 @@ Definida em `backend/prisma/schema.prisma`:
 ## Documentação adicional
 
 - **`backend/docs/ESTRUTURA.md`** — fluxo da requisição pelas camadas e política de papéis em texto corrido.
+- **`backend/docs/POSTMAN.md`** — como importar a coleção e exemplos de JSON (login e demais rotas).
+- **`backend/postman/BatMotor.postman_collection.json`** — coleção Postman (login grava o token automaticamente).
 
 ---
 
