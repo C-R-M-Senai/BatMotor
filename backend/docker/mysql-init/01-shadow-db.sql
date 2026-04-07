@@ -1,3 +1,3 @@
--- Roda só na primeira inicialização do volume em docker-entrypoint-initdb.d.
--- Shadow do Prisma Migrate precisa ser um banco diferente do DATABASE_URL principal.
-CREATE DATABASE IF NOT EXISTS batmotor_shadow;
+-- Banco separado para shadow do Prisma Migrate (nome alinhado ao .env.example).
+-- Roda só na primeira inicialização do volume.
+CREATE DATABASE IF NOT EXISTS prisma_migrate_shadow;
