@@ -8,7 +8,27 @@ import { errorHandler } from "./middlewares/errorHandler";
  */
 export function createApp() {
   const app = express();
-  app.use(express.json());
+  /**
+   * JSON: por padrão o Express só faz parse com `Content-Type: application/json`.
+   * Postman/cURL às vezes mandam o body JSON sem esse header (ou como text/plain) —
+   * aí `req.body` fica vazio e o middleware de JWT acha que “falta token”.
+   *
+   * Só NÃO tratamos como JSON quando é claramente form ou multipart (aí o parser abaixo lê).
+   */
+  app.use(
+    express.json({
+      type: (req) => {
+        const ct = (req.headers["content-type"] ?? "")
+          .split(";")[0]
+          .trim()
+          .toLowerCase();
+        if (ct === "application/x-www-form-urlencoded") return false;
+        if (ct.startsWith("multipart/")) return false;
+        return true;
+      },
+    }),
+  );
+  app.use(express.urlencoded({ extended: true }));
 
   registerRoutes(app);
 

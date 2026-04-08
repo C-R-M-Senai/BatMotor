@@ -30,6 +30,28 @@ export async function createMovimentacao(
       ? Number(body.usuario_id)
       : auth.userId;
 
+  const materiaExiste = await prisma.materiaPrima.findUnique({
+    where: { id: materiaId },
+    select: { id: true },
+  });
+  if (!materiaExiste) {
+    const err = new Error(
+      "Matéria-prima não encontrada. Cadastre uma matéria-prima ou use um materia_prima_id válido (ex.: liste GET /materia-prima).",
+    );
+    (err as Error & { status: number }).status = 400;
+    throw err;
+  }
+
+  const usuarioExiste = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { id: true },
+  });
+  if (!usuarioExiste) {
+    const err = new Error("Usuário (operador) não encontrado para esta movimentação.");
+    (err as Error & { status: number }).status = 400;
+    throw err;
+  }
+
   if (body.tipo === TipoMovimentacao.SAIDA) {
     const estoque = await prisma.estoqueAtual.findUnique({
       where: { materia_prima_id: materiaId },

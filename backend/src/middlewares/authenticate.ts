@@ -9,16 +9,20 @@ import { verifyToken } from "../utils/token";
  * O token é o valor retornado por POST /auth/login — não é a senha de login.
  */
 const msgSemToken =
-  "Falta o JWT. Envie o cabeçalho Authorization: Bearer <token> " +
-  "ou inclua no JSON do body a propriedade \"token\" com a string retornada por POST /auth/login " +
-  "(a senha de login não serve).";
+  "Falta o JWT. Envie Authorization: Bearer <token> ou o campo \"token\" no body/query. " +
+  "No Postman: POST, Body → raw → JSON e header Content-Type: application/json; " +
+  "ou Body → x-www-form-urlencoded com os campos (incluindo token). " +
+  "O token vem de POST /auth/login — não use a senha no lugar do token.";
 
 function readJwtFromRequest(req: Parameters<RequestHandler>[0]): string | null {
   const header = req.headers.authorization;
-  if (header?.startsWith("Bearer ")) {
-    const raw = header.slice("Bearer ".length).trim();
-    if (raw) return raw;
+  if (header) {
+    const m = /^Bearer\s+(\S+)/i.exec(header.trim());
+    if (m?.[1]) return m[1].trim();
   }
+  const q = req.query.token;
+  if (typeof q === "string" && q.trim()) return q.trim();
+
   const body = req.body;
   if (
     body &&

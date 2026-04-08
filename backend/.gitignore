@@ -9,11 +9,11 @@ node_modules
 docker-compose.yml
 
 /src/generated
+/postman
+/prisma
+/prisma/migrations
+/prisma/seed.ts
+/prisma/schema.prisma
 
-.agents
+.agents e .skills são arquivos de teste do Claude   
 skills-lock.json
-
-test-materia-fornecedor.http
-test-materia-prima.http
-user-perfil-tests.rest
-USUARIO-PERFIL-EXPLICACAO.md

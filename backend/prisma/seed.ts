@@ -116,6 +116,24 @@ async function main() {
     if (perfil) await vincularPerfil(usuario.id, perfil.id);
   }
 
+  const mpDev = await prisma.materiaPrima.findFirst({
+    where: { nome: "Parafuso M8 zincado (dev)" },
+  });
+  if (!mpDev) {
+    await prisma.materiaPrima.create({
+      data: {
+        nome: "Parafuso M8 zincado (dev)",
+        categoria: "Fixação",
+        unidade: "UN",
+        estoque_minimo: 100,
+        ativo: true,
+      },
+    });
+    console.log(
+      "[seed] Matéria-prima de exemplo criada (use o id retornado por GET /materia-prima ou o primeiro id após migrate).",
+    );
+  }
+
   console.log("[seed] Usuários de desenvolvimento (login → JWT por 8h ou o que estiver no .env):");
   for (const u of usuariosSeed) {
     console.log(`  • ${u.role.padEnd(12)} ${u.email} / ${u.senha}`);
