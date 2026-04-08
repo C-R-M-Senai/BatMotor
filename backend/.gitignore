@@ -1,19 +1,16 @@
 node_modules
 
-# Segredos e ambiente local — NÃO ignore .env.example nem docker-compose.yml (o time precisa deles no Git).
+# Segredos e ambiente local — versione .env.example e docker-compose.yml para o time.
 .env
 .env.local
 .env.*.local
 
-.env.example
+# Cliente Prisma gerado (recriar com: npx prisma generate)
+/src/generated
+
 docker-compose.yml
 
-/src/generated
-/postman
-/prisma
-/prisma/migrations
-/prisma/seed.ts
-/prisma/schema.prisma
+# Coleção Postman com credenciais? Descomente a linha abaixo para não versionar a pasta.
+# postman/
 
-.agents e .skills são arquivos de teste do Claude   
 skills-lock.json
