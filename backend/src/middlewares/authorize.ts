@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { Role } from "../generated/prisma/client";
+import { getRolesForUsuario } from "../services/usuario.service";
 
 /**
  * ADMIN pode tudo neste middleware: se o usuário tem role ADMIN, liberamos
@@ -8,6 +9,15 @@ import { Role } from "../generated/prisma/client";
 function hasAnyAllowedRole(userRoles: Role[], ...allowed: Role[]): boolean {
   if (userRoles.includes(Role.ADMIN)) return true;
   return allowed.some((r) => userRoles.includes(r));
+}
+
+/** Unifica papéis do JWT (login) e do banco (UsuarioPerfil → Perfil). */
+function mergeJwtAndDbRoles(jwtRoles: Role[] | undefined, dbRoles: Role[]): Role[] {
+  const out: Role[] = [...dbRoles];
+  for (const r of jwtRoles ?? []) {
+    if (!out.includes(r)) out.push(r);
+  }
+  return out;
 }
 
 /**
@@ -35,5 +45,34 @@ export function requireRole(...allowed: Role[]): RequestHandler {
       });
     }
     next();
+  };
+}
+
+/**
+ * Como `requireRole`, mas consulta perfis no banco (UsuarioPerfil → Perfil).
+ * Evita 403 quando o JWT ainda traz o papel antigo após troca de perfil/sessão.
+ */
+export function requireRoleFromDb(...allowed: Role[]): RequestHandler {
+  return (req, res, next) => {
+    void (async () => {
+      if (!req.auth) {
+        res.status(401).json({ error: "Não autenticado" });
+        return;
+      }
+      try {
+        const dbRoles = await getRolesForUsuario(req.auth.userId);
+        const roles = mergeJwtAndDbRoles(req.auth.roles, dbRoles);
+        if (!hasAnyAllowedRole(roles, ...allowed)) {
+          res.status(403).json({
+            error:
+              "Sem permissão para esta ação. Verifique o perfil do usuário (ADMIN / GERENTE / FUNCIONARIO).",
+          });
+          return;
+        }
+        next();
+      } catch (err) {
+        next(err);
+      }
+    })();
   };
 }

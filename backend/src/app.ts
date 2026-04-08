@@ -1,6 +1,23 @@
+import cors from "cors";
 import express from "express";
 import { registerRoutes } from "./routes/index";
 import { errorHandler } from "./middlewares/errorHandler";
+
+const DEFAULT_CORS_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:4173",
+];
+
+function parseCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS?.trim();
+  if (!raw) return DEFAULT_CORS_ORIGINS;
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 /**
  * Fábrica da aplicação Express (sem subir a porta).
@@ -8,6 +25,26 @@ import { errorHandler } from "./middlewares/errorHandler";
  */
 export function createApp() {
   const app = express();
+
+  const allowedOrigins = parseCorsOrigins();
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    }),
+  );
+
   /**
    * JSON: por padrão o Express só faz parse com `Content-Type: application/json`.
    * Postman/cURL às vezes mandam o body JSON sem esse header (ou como text/plain) —

@@ -5,7 +5,8 @@
  * - `POST /auth/login` é público (sem JWT).
  * - `POST /movimentacao` aceita JWT opcional: sem token, exige `usuario_id` do funcionário no JSON.
  * - Demais endpoints exigem `Authorization: Bearer <token>` (middleware `authenticate`).
- * - Papéis (ADMIN / GERENTE / FUNCIONARIO) são aplicados com `requireRole`.
+ * - Papéis (ADMIN / GERENTE / FUNCIONARIO) são aplicados com `requireRole` (JWT) ou
+ *   `requireRoleFromDb` (banco) em rotas onde o token pode ficar defasado após troca de perfil.
  *
  * Os caminhos foram mantidos iguais à versão monolítica (`/users`, `/perfil`, …)
  * para não quebrar testes e front-end que já apontavam para essas URLs.
@@ -26,11 +27,14 @@ import * as movimentacaoController from "../controllers/movimentacao.controller"
 import * as estoqueController from "../controllers/estoque.controller";
 import * as testeController from "../controllers/teste.controller";
 import { authenticate, optionalAuthenticate } from "../middlewares/authenticate";
-import { requireRole } from "../middlewares/authorize";
+import { requireRole, requireRoleFromDb } from "../middlewares/authorize";
 import { asyncHandler } from "../utils/asyncHandler";
 
 const adminOnly = requireRole(Role.ADMIN);
 const adminOuGerente = requireRole(Role.ADMIN, Role.GERENTE);
+/** Rotas /users: papel efetivo no banco (JWT pode estar defasado após alterar perfil). */
+const adminOnlyDb = requireRoleFromDb(Role.ADMIN);
+const adminOuGerenteDb = requireRoleFromDb(Role.ADMIN, Role.GERENTE);
 
 export function registerRoutes(app: Express): void {
   app.post("/auth/login", asyncHandler(authController.login));
@@ -45,11 +49,11 @@ export function registerRoutes(app: Express): void {
   r.use(authenticate);
 
   /* -------- Usuários: gestão de contas (cadastro feito pela equipe, não pelo login público) -------- */
-  r.get("/users", adminOuGerente, asyncHandler(usuarioController.list));
+  r.get("/users", adminOuGerenteDb, asyncHandler(usuarioController.list));
   r.get("/users/:id", asyncHandler(usuarioController.getById));
-  r.post("/users", adminOnly, asyncHandler(usuarioController.create));
-  r.put("/users/:id", adminOnly, asyncHandler(usuarioController.update));
-  r.delete("/users/:id", adminOnly, asyncHandler(usuarioController.remove));
+  r.post("/users", adminOnlyDb, asyncHandler(usuarioController.create));
+  r.put("/users/:id", adminOnlyDb, asyncHandler(usuarioController.update));
+  r.delete("/users/:id", adminOnlyDb, asyncHandler(usuarioController.remove));
 
   /* -------- Perfis, módulos, permissões e vínculo usuário–perfil: configuração do sistema -------- */
   r.post("/perfil", adminOnly, asyncHandler(perfilController.create));

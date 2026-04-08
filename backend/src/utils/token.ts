@@ -27,12 +27,12 @@ export function verifyToken(token: string): JwtPayload {
     throw new Error("Token inválido");
   }
   const { sub, email, roles } = decoded as Record<string, unknown>;
-  if (
-    typeof sub !== "number" ||
-    typeof email !== "string" ||
-    !Array.isArray(roles)
-  ) {
+  let subNum: number;
+  if (typeof sub === "number" && Number.isFinite(sub)) subNum = sub;
+  else if (typeof sub === "string" && /^\d+$/.test(sub)) subNum = Number(sub);
+  else throw new Error("Token inválido");
+  if (typeof email !== "string" || !Array.isArray(roles)) {
     throw new Error("Token inválido");
   }
-  return { sub, email, roles: roles as Role[] };
+  return { sub: subNum, email, roles: roles as Role[] };
 }

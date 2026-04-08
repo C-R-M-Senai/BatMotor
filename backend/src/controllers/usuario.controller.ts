@@ -29,16 +29,34 @@ export async function getById(req: Request, res: Response) {
 }
 
 export async function create(req: Request, res: Response) {
-  const { nome, email, senha, cpf, ativo } = req.body ?? {};
+  const { nome, email, senha, cpf, ativo, perfil_role } = req.body ?? {};
   if (!nome || !email || !senha || !cpf) {
     return res.status(400).json({ error: "Campos obrigatórios: nome, email, senha, cpf" });
   }
+
+  let perfilRoleParsed: Role | undefined;
+  if (perfil_role != null && String(perfil_role).trim() !== "") {
+    const pr = String(perfil_role).trim().toUpperCase();
+    if (pr === "ADMIN") {
+      return res
+        .status(400)
+        .json({ error: "Não é permitido criar outro administrador por esta rota." });
+    }
+    if (pr !== "GERENTE" && pr !== "FUNCIONARIO") {
+      return res.status(400).json({
+        error: "perfil_role deve ser GERENTE ou FUNCIONARIO (ou omita para criar sem perfil).",
+      });
+    }
+    perfilRoleParsed = pr as Role;
+  }
+
   const row = await usuarioService.createUsuario({
     nome,
     email,
     senha,
     cpf,
     ativo,
+    perfil_role: perfilRoleParsed,
   });
   return res.status(201).json(row);
 }
@@ -66,6 +84,11 @@ export async function remove(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (Number.isNaN(id)) {
     return res.status(400).json({ error: "Id inválido" });
+  }
+  if (id === 1) {
+    return res.status(403).json({
+      error: "Não é permitido excluir o administrador principal do sistema.",
+    });
   }
   const row = await usuarioService.deleteUsuario(id);
   return res.status(200).json({
