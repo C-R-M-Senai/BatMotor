@@ -1,11 +1,14 @@
 node_modules
 
+# Segredos e ambiente local — NÃO ignore .env.example nem docker-compose.yml (o time precisa deles no Git).
 .env
+.env.local
+.env.*.local
+
 .env.example
 docker-compose.yml
 
 /src/generated
-
 
 .agents
 skills-lock.json

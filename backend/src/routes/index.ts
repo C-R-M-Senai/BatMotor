@@ -3,6 +3,7 @@
  *
  * Convenções deste projeto:
  * - `POST /auth/login` é público (sem JWT).
+ * - `POST /movimentacao` aceita JWT opcional: sem token, exige `usuario_id` do funcionário no JSON.
  * - Demais endpoints exigem `Authorization: Bearer <token>` (middleware `authenticate`).
  * - Papéis (ADMIN / GERENTE / FUNCIONARIO) são aplicados com `requireRole`.
  *
@@ -24,7 +25,7 @@ import * as permissaoModuloController from "../controllers/permissaoModulo.contr
 import * as movimentacaoController from "../controllers/movimentacao.controller";
 import * as estoqueController from "../controllers/estoque.controller";
 import * as testeController from "../controllers/teste.controller";
-import { authenticate } from "../middlewares/authenticate";
+import { authenticate, optionalAuthenticate } from "../middlewares/authenticate";
 import { requireRole } from "../middlewares/authorize";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -33,6 +34,12 @@ const adminOuGerente = requireRole(Role.ADMIN, Role.GERENTE);
 
 export function registerRoutes(app: Express): void {
   app.post("/auth/login", asyncHandler(authController.login));
+
+  app.post(
+    "/movimentacao",
+    optionalAuthenticate,
+    asyncHandler(movimentacaoController.create),
+  );
 
   const r = Router();
   r.use(authenticate);
@@ -159,8 +166,7 @@ export function registerRoutes(app: Express): void {
     asyncHandler(materiaPrimaController.remove),
   );
 
-  /* -------- Movimentação: qualquer usuário logado registra entrada/saída; edição/exclusão mais restritiva -------- */
-  r.post("/movimentacao", asyncHandler(movimentacaoController.create));
+  /* -------- Movimentação: POST sem router (JWT opcional + usuario_id); demais rotas autenticadas -------- */
   r.get("/movimentacao", asyncHandler(movimentacaoController.list));
   r.get("/movimentacao/:id", asyncHandler(movimentacaoController.getById));
   r.put(

@@ -1,93 +1,127 @@
 /**
- * Dados mínimos para desenvolvimento: perfil ADMIN + usuário admin@batmotor.com.
- * Execute: `npx prisma db seed` (com MySQL no ar e `.env` carregado).
+ * Dados para desenvolvimento: perfis ADMIN, GERENTE, FUNCIONARIO e usuários de exemplo.
+ * Execute: `npx prisma db seed` (MySQL no ar + `.env`).
  */
 import "dotenv/config";
+import type { Role } from "../src/generated/prisma/client";
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/utils/password";
 
-const ADMIN_EMAIL = "admin@batmotor.com";
-const ADMIN_SENHA_PLAIN = "adminbatmotor";
-/** CPF fictício só para dev; único na tabela `Usuario`. */
-const ADMIN_CPF = "00000000191";
+const usuariosSeed = [
+  {
+    email: "admin@batmotor.com",
+    senha: "adminbatmotor",
+    nome: "Administrador BatMotor",
+    cpf: "00000000191",
+    role: "ADMIN" as Role,
+  },
+  {
+    email: "gerente.dev@batmotor.local",
+    senha: "gerentebatmotor",
+    nome: "Gerente (dev)",
+    cpf: "11144477735",
+    role: "GERENTE" as Role,
+  },
+  {
+    email: "funcionario.dev@batmotor.local",
+    senha: "funcionariobatmotor",
+    nome: "Funcionário Almoxarifado (dev)",
+    cpf: "39053344705",
+    role: "FUNCIONARIO" as Role,
+  },
+];
 
-async function main() {
-  const senhaHash = await hashPassword(ADMIN_SENHA_PLAIN);
-
-  let perfilAdmin = await prisma.perfil.findFirst({
-    where: { role: "ADMIN" },
-  });
-  if (!perfilAdmin) {
-    perfilAdmin = await prisma.perfil.create({
-      data: {
-        role: "ADMIN",
-        descricao: "Administrador (seed)",
-      },
+async function ensurePerfil(role: Role, descricao: string) {
+  let p = await prisma.perfil.findFirst({ where: { role } });
+  if (!p) {
+    p = await prisma.perfil.create({
+      data: { role, descricao },
     });
   }
+  return p;
+}
 
-  /**
-   * Não usar só `upsert` por e-mail: se já existir outro usuário com o mesmo CPF de dev
-   * (ex.: seed antigo `admin@empresa.com`), o `create` quebra com P2002 em `Usuario_cpf_key`.
-   */
+/** Cria ou atualiza usuário por e-mail; reaproveita linha se o CPF de dev já existir com outro e-mail. */
+async function ensureUsuarioDev(input: {
+  email: string;
+  senhaPlain: string;
+  nome: string;
+  cpf: string;
+}) {
+  const senhaHash = await hashPassword(input.senhaPlain);
   const porEmail = await prisma.usuario.findUnique({
-    where: { email: ADMIN_EMAIL },
+    where: { email: input.email },
   });
   const porCpf = await prisma.usuario.findUnique({
-    where: { cpf: ADMIN_CPF },
+    where: { cpf: input.cpf },
   });
 
-  let usuario;
   if (porEmail) {
-    usuario = await prisma.usuario.update({
+    return prisma.usuario.update({
       where: { id: porEmail.id },
-      data: {
-        nome: "Administrador BatMotor",
-        senha: senhaHash,
-        ativo: true,
-      },
+      data: { nome: input.nome, senha: senhaHash, ativo: true },
     });
-  } else if (porCpf) {
-    usuario = await prisma.usuario.update({
+  }
+  if (porCpf) {
+    return prisma.usuario.update({
       where: { id: porCpf.id },
       data: {
-        email: ADMIN_EMAIL,
-        nome: "Administrador BatMotor",
+        email: input.email,
+        nome: input.nome,
         senha: senhaHash,
-        ativo: true,
-      },
-    });
-  } else {
-    usuario = await prisma.usuario.create({
-      data: {
-        email: ADMIN_EMAIL,
-        nome: "Administrador BatMotor",
-        senha: senhaHash,
-        cpf: ADMIN_CPF,
         ativo: true,
       },
     });
   }
-
-  const jaVinculado = await prisma.usuarioPerfil.findUnique({
-    where: {
-      usuario_id_perfil_id: {
-        usuario_id: usuario.id,
-        perfil_id: perfilAdmin.id,
-      },
+  return prisma.usuario.create({
+    data: {
+      email: input.email,
+      nome: input.nome,
+      senha: senhaHash,
+      cpf: input.cpf,
+      ativo: true,
     },
   });
-  if (!jaVinculado) {
+}
+
+async function vincularPerfil(usuarioId: number, perfilId: number) {
+  const existe = await prisma.usuarioPerfil.findUnique({
+    where: {
+      usuario_id_perfil_id: { usuario_id: usuarioId, perfil_id: perfilId },
+    },
+  });
+  if (!existe) {
     await prisma.usuarioPerfil.create({
-      data: {
-        usuario_id: usuario.id,
-        perfil_id: perfilAdmin.id,
-      },
+      data: { usuario_id: usuarioId, perfil_id: perfilId },
     });
   }
+}
 
+async function main() {
+  const perfilPorRole = new Map<Role, { id: number }>();
+
+  for (const role of ["ADMIN", "GERENTE", "FUNCIONARIO"] as Role[]) {
+    const p = await ensurePerfil(role, `Perfil ${role} (seed)`);
+    perfilPorRole.set(role, p);
+  }
+
+  for (const u of usuariosSeed) {
+    const usuario = await ensureUsuarioDev({
+      email: u.email,
+      senhaPlain: u.senha,
+      nome: u.nome,
+      cpf: u.cpf,
+    });
+    const perfil = perfilPorRole.get(u.role);
+    if (perfil) await vincularPerfil(usuario.id, perfil.id);
+  }
+
+  console.log("[seed] Usuários de desenvolvimento (login → JWT por 8h ou o que estiver no .env):");
+  for (const u of usuariosSeed) {
+    console.log(`  • ${u.role.padEnd(12)} ${u.email} / ${u.senha}`);
+  }
   console.log(
-    `[seed] Pronto: login com email "${ADMIN_EMAIL}" e a senha configurada no seed.`,
+    "[seed] Funcionário: POST /movimentacao (entrada/saída). Gerente: fornecedores/matérias. Admin: tudo.",
   );
 }
 

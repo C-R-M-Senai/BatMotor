@@ -72,6 +72,18 @@ export async function createMovimentacao(
   return registro;
 }
 
+/** Para `POST /movimentacao` sem JWT: só aceita id de usuário ativo com papel FUNCIONARIO. */
+export async function usuarioEhFuncionarioAtivo(usuarioId: number): Promise<boolean> {
+  const u = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    include: {
+      usuarioPerfis: { include: { perfil: { select: { role: true } } } },
+    },
+  });
+  if (!u?.ativo) return false;
+  return u.usuarioPerfis.some((up) => up.perfil.role === Role.FUNCIONARIO);
+}
+
 export function listMovimentacoes() {
   return prisma.movimentacao.findMany({
     include: {

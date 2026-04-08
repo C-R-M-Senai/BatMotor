@@ -6,6 +6,18 @@
 2. Variáveis da coleção: `baseUrl` (padrão `http://localhost:3000`), `loginEmail`, `loginSenha`, IDs numéricos após criar dados.
 3. Execute **POST Login** primeiro; o teste da requisição grava o `token` automaticamente. As outras pastas usam **Bearer Token** `{{token}}`.
 
+## Como funciona o token (JWT) — sem colar “na mão” o tempo todo
+
+1. **Login uma vez:** `POST /auth/login` com e-mail e **senha**. A API devolve um JSON com `"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6..."` (texto longo). Isso **não é** a senha (`adminbatmotor` é senha, não token).
+2. **Demais requisições:** o token vai no **cabeçalho** `Authorization`, não no body:
+   - Nome do cabeçalho: `Authorization`
+   - Valor: `Bearer ` + o token completo (com espaço depois de Bearer).
+3. **Na empresa / no app:** o front ou o Postman **guarda** o token depois do login (memória, `localStorage`, variável da coleção) e **reenvia automaticamente** em cada chamada. Você não digita o token todo dia; o fluxo é: usuário faz login → o sistema guarda → as telas usam esse valor nos headers até expirar (`JWT_EXPIRES_IN`) ou fazer logout.
+
+**Recomendado:** aba **Authorization** → **Bearer Token** (ou a coleção que preenche `{{token}}` após o Login).
+
+**Alternativa (compatível):** você pode enviar o mesmo JWT no JSON do body com a propriedade **`"token"`** (string completa retornada pelo login). Útil se quiser testar só na aba Body. Copie o token **inteiro**, sem cortar caracteres — se faltar um pedaço, dá “Token inválido ou expirado”.
+
 ## JSON válido no body (erros comuns)
 
 - Todo **valor de texto** vai entre **aspas duplas** (`"email"` e `"admin@empresa.com"`).

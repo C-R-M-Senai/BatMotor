@@ -25,7 +25,8 @@ Este documento explica **para que serve cada pasta** e **como o fluxo HTTP** per
 
 - **ADMIN** — acesso total às rotas de configuração (`/perfil`, `/modulos`, `/permissao-modulo`, `/user-perfil`, CRUD de `/teste`, criação/edição/remoção de usuários).
 - **ADMIN ou GERENTE** — cadastros de almoxarifado que alteram dados mestres (`POST/PUT/DELETE` em fornecedores, matérias-prima, vínculo matéria–fornecedor; edição/remoção de movimentações).
-- **Qualquer usuário autenticado** — consultas e registro de **movimentação de entrada/saída** (`usuario_id` no corpo só é aceito se for ADMIN; caso contrário usa-se o id do token).
+- **POST `/movimentacao`** — sem JWT: corpo com `usuario_id` de usuário **FUNCIONARIO** ativo. Com JWT: **FUNCIONARIO** ou **ADMIN** (`usuario_id` no corpo só ADMIN).
+- **Qualquer usuário autenticado** — consultas (`GET`) em almoxarifado, movimentações e estoque.
 
 ## Arquivo legado
 

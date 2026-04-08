@@ -176,7 +176,8 @@ Regras gerais (detalhes em `src/routes/index.ts` e `docs/ESTRUTURA.md`):
 
 - **ADMIN** — configuração do sistema: perfis, módulos, permissões, vínculo usuário–perfil, CRUD de `/teste`, CRUD completo de usuários (`POST/PUT/DELETE /users`).
 - **ADMIN ou GERENTE** — alterações em cadastros de almoxarifado (POST/PUT/DELETE em fornecedores, matéria-prima, vínculo matéria–fornecedor; PUT/DELETE em movimentações). Listagens GET de usuários também liberadas para esses dois papéis.
-- **Qualquer autenticado** — leituras amplas de almoxarifado e **registro de movimentação** (`POST /movimentacao`). O campo `usuario_id` no corpo **só é aceito para ADMIN**; para os demais o sistema usa o id do token.
+- **POST `/movimentacao`** — **sem JWT:** envie **`usuario_id`** (id do funcionário com perfil FUNCIONARIO). **Com JWT:** **FUNCIONARIO** ou **ADMIN**; **GERENTE** não cria movimentação nova com token de gerente. Com **ADMIN** no token, `usuario_id` no body registra em nome de outro usuário.
+- **Qualquer autenticado** — leituras (`GET`) de almoxarifado, movimentações e estoque atual.
 
 ---
 
@@ -231,7 +232,7 @@ Prefixo: raiz da API (ex.: `http://localhost:3000`). Todas abaixo **exigem JWT**
 
 | Método | Rota | Observação |
 |--------|------|------------|
-| POST | `/movimentacao` | autenticado (`usuario_id` no body só ADMIN) |
+| POST | `/movimentacao` | **Público** sem JWT se enviar `usuario_id` (funcionário válido); ou **JWT** FUNCIONARIO/ADMIN (`usuario_id` no body só ADMIN) |
 | GET | `/movimentacao`, `/movimentacao/:id` | autenticado |
 | PUT, DELETE | `/movimentacao/:id` | ADMIN, GERENTE |
 | GET | `/estoque-atual` | autenticado |
@@ -270,6 +271,7 @@ Definida em `backend/prisma/schema.prisma`:
 
 - **`backend/docs/ESTRUTURA.md`** — fluxo da requisição pelas camadas e política de papéis em texto corrido.
 - **`backend/docs/POSTMAN.md`** — como importar a coleção e exemplos de JSON (login e demais rotas).
+- **`backend/docs/PERFIS_E_FLUXO.md`** — quem cria usuários, token x entrada/saída, diferença ADMIN / GERENTE / FUNCIONARIO.
 - **`backend/postman/BatMotor.postman_collection.json`** — coleção Postman (login grava o token automaticamente).
 
 ---

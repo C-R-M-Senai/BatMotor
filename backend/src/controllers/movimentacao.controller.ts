@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { TipoMovimentacao } from "../generated/prisma/client";
+import { Role, TipoMovimentacao } from "../generated/prisma/client";
 import * as svc from "../services/movimentacao.service";
 
 export async function create(req: Request, res: Response) {
@@ -19,7 +19,42 @@ export async function create(req: Request, res: Response) {
   if (tipo !== TipoMovimentacao.ENTRADA && tipo !== TipoMovimentacao.SAIDA) {
     return res.status(400).json({ error: "tipo deve ser ENTRADA ou SAIDA" });
   }
-  const auth = req.auth!;
+
+  const authHeader = req.auth;
+  let authCtx: { userId: number; roles: Role[] };
+
+  if (authHeader) {
+    const isAdmin = authHeader.roles.includes(Role.ADMIN);
+    const isFunc = authHeader.roles.includes(Role.FUNCIONARIO);
+    if (!isAdmin && !isFunc) {
+      return res.status(403).json({
+        error:
+          "Com login JWT, apenas ADMIN ou FUNCIONARIO podem registrar nova movimentação.",
+      });
+    }
+    authCtx = { userId: authHeader.userId, roles: authHeader.roles };
+  } else {
+    if (usuario_id == null || usuario_id === "") {
+      return res.status(400).json({
+        error:
+          "Sem JWT: informe usuario_id (id numérico do funcionário cadastrado no sistema). " +
+          "Alternativa: faça POST /auth/login e envie Authorization: Bearer <token> — aí não precisa de usuario_id para registrar em nome próprio.",
+      });
+    }
+    const uid = Number(usuario_id);
+    if (Number.isNaN(uid)) {
+      return res.status(400).json({ error: "usuario_id inválido" });
+    }
+    const ok = await svc.usuarioEhFuncionarioAtivo(uid);
+    if (!ok) {
+      return res.status(403).json({
+        error:
+          "usuario_id deve ser de um usuário ativo com perfil FUNCIONARIO.",
+      });
+    }
+    authCtx = { userId: uid, roles: [Role.FUNCIONARIO] };
+  }
+
   const row = await svc.createMovimentacao(
     {
       materia_prima_id: Number(materia_prima_id),
@@ -27,11 +62,13 @@ export async function create(req: Request, res: Response) {
       quantidade: Number(quantidade),
       motivo,
       usuario_id:
-        usuario_id != null && usuario_id !== ""
+        authHeader?.roles.includes(Role.ADMIN) &&
+        usuario_id != null &&
+        usuario_id !== ""
           ? Number(usuario_id)
           : undefined,
     },
-    { userId: auth.userId, roles: auth.roles },
+    authCtx,
   );
   return res.status(201).json(row);
 }
