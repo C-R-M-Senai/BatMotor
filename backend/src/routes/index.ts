@@ -1,14 +1,19 @@
 /**
- * Registro central de todas as rotas HTTP.
+ * ===========================================================================
+ * routes/index.ts — MAPA CENTRAL DA API (URL → controller + permissões)
+ * ===========================================================================
  *
- * Convenções deste projeto:
- * - `POST /auth/login` é público (sem JWT).
- * - `POST /movimentacao` aceita JWT opcional: sem token, exige `usuario_id` do funcionário no JSON.
- * - Demais endpoints exigem `Authorization: Bearer <token>` (middleware `authenticate`).
- * - Papéis (ADMIN / GERENTE / FUNCIONARIO) são aplicados com `requireRole`.
+ * CONVENÇÕES:
+ * - POST /auth/login → público (sem cabeçalho Authorization).
+ * - POST /movimentacao → JWT opcional; sem token, o JSON deve trazer usuario_id (fluxo funcionário).
+ * - Router `r` após r.use(authenticate): demais rotas exigem Bearer token válido.
+ * - requireRole → papéis extraídos do JWT; requireRoleFromDb → papéis lidos na base de dados.
+ * - PATCH /users/me → utilizador altera o próprio cadastro (limites por papel no controller).
  *
- * Os caminhos foram mantidos iguais à versão monolítica (`/users`, `/perfil`, …)
- * para não quebrar testes e front-end que já apontavam para essas URLs.
+ * Índice e fluxos detalhados: docs/GUIA_PEDAGOGICO_BATMOTOR.md (raiz do repositório).
+ *
+ * Caminhos alinhados à API monolítica antiga (`/users`, `/perfil`, …) para compatibilidade.
+ * ===========================================================================
  */
 import type { Express } from "express";
 import { Router } from "express";
@@ -24,13 +29,17 @@ import * as materiaPrimaController from "../controllers/materiaPrima.controller"
 import * as permissaoModuloController from "../controllers/permissaoModulo.controller";
 import * as movimentacaoController from "../controllers/movimentacao.controller";
 import * as estoqueController from "../controllers/estoque.controller";
+import * as relatorioController from "../controllers/relatorio.controller";
 import * as testeController from "../controllers/teste.controller";
 import { authenticate, optionalAuthenticate } from "../middlewares/authenticate";
-import { requireRole } from "../middlewares/authorize";
+import { requireRole, requireRoleFromDb } from "../middlewares/authorize";
 import { asyncHandler } from "../utils/asyncHandler";
 
 const adminOnly = requireRole(Role.ADMIN);
 const adminOuGerente = requireRole(Role.ADMIN, Role.GERENTE);
+/** Rotas /users: papel efetivo no banco (JWT pode estar defasado após alterar perfil). */
+const adminOnlyDb = requireRoleFromDb(Role.ADMIN);
+const adminOuGerenteDb = requireRoleFromDb(Role.ADMIN, Role.GERENTE);
 
 export function registerRoutes(app: Express): void {
   app.post("/auth/login", asyncHandler(authController.login));
@@ -45,11 +54,12 @@ export function registerRoutes(app: Express): void {
   r.use(authenticate);
 
   /* -------- Usuários: gestão de contas (cadastro feito pela equipe, não pelo login público) -------- */
-  r.get("/users", adminOuGerente, asyncHandler(usuarioController.list));
+  r.patch("/users/me", asyncHandler(usuarioController.updateMe));
+  r.get("/users", adminOuGerenteDb, asyncHandler(usuarioController.list));
   r.get("/users/:id", asyncHandler(usuarioController.getById));
-  r.post("/users", adminOnly, asyncHandler(usuarioController.create));
-  r.put("/users/:id", adminOnly, asyncHandler(usuarioController.update));
-  r.delete("/users/:id", adminOnly, asyncHandler(usuarioController.remove));
+  r.post("/users", adminOnlyDb, asyncHandler(usuarioController.create));
+  r.put("/users/:id", adminOnlyDb, asyncHandler(usuarioController.update));
+  r.delete("/users/:id", adminOnlyDb, asyncHandler(usuarioController.remove));
 
   /* -------- Perfis, módulos, permissões e vínculo usuário–perfil: configuração do sistema -------- */
   r.post("/perfil", adminOnly, asyncHandler(perfilController.create));
@@ -182,6 +192,22 @@ export function registerRoutes(app: Express): void {
 
   /** Saldo atual por matéria-prima (nova rota em relação ao arquivo único antigo). */
   r.get("/estoque-atual", asyncHandler(estoqueController.list));
+
+  /** Relatório: matérias-primas abaixo do estoque mínimo (compras / alertas). */
+  r.get(
+    "/relatorios/estoque-baixo",
+    asyncHandler(relatorioController.estoqueBaixo),
+  );
+  r.post(
+    "/relatorios/estoque-baixo/enviar-email",
+    adminOuGerente,
+    asyncHandler(relatorioController.estoqueBaixoEnviarEmail),
+  );
+  /** Série diária entrada/saída (dados reais de Movimentacao) para gráficos do dashboard. */
+  r.get(
+    "/relatorios/movimentacoes-por-dia",
+    asyncHandler(relatorioController.movimentacoesPorDia),
+  );
 
   /* -------- Modelo de exemplo no schema (opcional em produção) -------- */
   r.get("/teste", adminOnly, asyncHandler(testeController.list));

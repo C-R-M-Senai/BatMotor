@@ -9,6 +9,7 @@ export function createFornecedor(data: {
   cnpj: string;
   email?: string | null;
   telefone?: string | null;
+  ativo?: boolean;
 }) {
   return prisma.fornecedor.create({
     data: {
@@ -16,6 +17,7 @@ export function createFornecedor(data: {
       cnpj: data.cnpj,
       email: data.email ?? null,
       telefone: data.telefone ?? null,
+      ativo: data.ativo ?? true,
     },
   });
 }
@@ -30,7 +32,12 @@ export function findFornecedor(id: number) {
 
 export function updateFornecedor(
   id: number,
-  data: { nome?: string; email?: string | null; telefone?: string | null },
+  data: {
+    nome?: string;
+    email?: string | null;
+    telefone?: string | null;
+    ativo?: boolean;
+  },
 ) {
   return prisma.fornecedor.update({
     where: { id },

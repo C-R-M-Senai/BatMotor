@@ -1,14 +1,21 @@
+/**
+ * =============================================================================
+ * asyncHandler.ts — PROMESSES NAS CONTROLLERS EXPRESS
+ * =============================================================================
+ * Handlers async que fazem `throw` ou `return Promise.reject` SEM este wrapper
+ * podem deixar o cliente sem resposta (erro “não visto” pelo Express).
+ *
+ * Padrão nas rotas: asyncHandler(controllerFn) — qualquer rejeição passa a next(err)
+ * e cai em middlewares/errorHandler.ts.
+ *
+ * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 
 /**
- * Utilitário para envolver handlers `async` e encaminhar erros ao `next(err)`.
- *
- * Sem isso, um `throw` ou `reject` dentro de uma rota async pode não chegar ao
- * middleware de tratamento de erros do Express.
- */
-/**
  * Aceita handlers que retornem `res.json()` (Promise com valor) ou `void`;
- * o Express não exige `void`, mas o TypeScript restringe — por isso `Promise<unknown>`.
+ * o TypeScript usa Promise<unknown> para compatibilidade com ambos.
  */
 export function asyncHandler(
   fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>,

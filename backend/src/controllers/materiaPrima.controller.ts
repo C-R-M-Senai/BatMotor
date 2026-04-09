@@ -16,8 +16,16 @@ export async function create(req: Request, res: Response) {
   return res.status(201).json(row);
 }
 
-export async function list(_req: Request, res: Response) {
-  const rows = await svc.listMateriaPrima();
+export async function list(req: Request, res: Response) {
+  const { categoria, busca } = req.query;
+  let ativo: boolean | undefined;
+  if (req.query.ativo === "true") ativo = true;
+  else if (req.query.ativo === "false") ativo = false;
+  const rows = await svc.listMateriaPrima({
+    categoria: typeof categoria === "string" ? categoria : undefined,
+    busca: typeof busca === "string" ? busca : undefined,
+    ativo,
+  });
   return res.status(200).json(rows);
 }
 
@@ -49,10 +57,7 @@ export async function update(req: Request, res: Response) {
     estoque_minimo: Number(estoque_minimo),
     ativo,
   });
-  return res.status(200).json({
-    materia: row,
-    message: "Matéria-prima atualizada com sucesso",
-  });
+  return res.status(200).json(row);
 }
 
 export async function remove(req: Request, res: Response) {
@@ -61,8 +66,5 @@ export async function remove(req: Request, res: Response) {
     return res.status(400).json({ error: "Id inválido" });
   }
   const row = await svc.deleteMateriaPrima(id);
-  return res.status(200).json({
-    materia: row,
-    message: "Matéria-prima deletada com sucesso",
-  });
+  return res.status(200).json(row);
 }

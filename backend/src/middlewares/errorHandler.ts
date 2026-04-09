@@ -1,3 +1,16 @@
+/**
+ * =============================================================================
+ * errorHandler.ts — RESPOSTA JSON UNIFORME PARA ERROS
+ * =============================================================================
+ * Executado após todas as rotas (ver app.ts). Recebe err de next(err) ou throws
+ * capturados pelo asyncHandler.
+ *
+ * Preferências de mapeamento:
+ *   • err.status (400–599) → mesmo status + err.message
+ *   • Prisma: P2002 duplicado, P2025 não encontrado, P2003 FK inválida
+ *   • Caso contrário → 500 genérico (detalhe interno no console, não exposto).
+ * =============================================================================
+ */
 import type { ErrorRequestHandler } from "express";
 
 /**
