@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { downloadXlsx } from "@/utils/exportXlsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchMaterials, fetchMovements } from "@/api";
 
@@ -205,6 +206,37 @@ function MaterialsPage() {
     setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
   };
 
+  const exportMaterialsXlsx = () => {
+    if (!rows.length) {
+      setFeedback({ text: "Não há dados para exportar.", kind: "info" });
+      return;
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    downloadXlsx(
+      `inventario-estoque-batmotor-${day}.xlsx`,
+      "Estoque",
+      {
+        name: "Produto",
+        code: "Codigo",
+        supplierName: "Fornecedor",
+        category: "Categoria",
+        lastEntry: "Dt ult. entrada",
+        lastExit: "Dt ult. saida",
+        purchaseValue: "Valor compra",
+        unitValue: "Valor unit.",
+        totalStock: "Estoque total",
+        stockStatus: "Status"
+      },
+      rows.map((r) => ({
+        ...r,
+        purchaseValue: formatBRL(r.purchaseValue),
+        unitValue: formatBRL(r.unitValue),
+        stockStatus: STOCK_STATUS_LABEL[r.stockStatus] || r.stockStatus
+      }))
+    );
+    setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+  };
+
   const pageNumbers = useMemo(() => {
     const maxVis = 5;
     if (totalPages <= maxVis) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -259,8 +291,17 @@ function MaterialsPage() {
             onClick={exportMaterialsPdf}
             title="Baixar PDF com movimentação e níveis de estoque"
           >
-            <i className="ri-file-download-line me-1" aria-hidden />
-            Exportar inventário
+            <i className="ri-file-pdf-line me-1" aria-hidden />
+            PDF
+          </button>
+          <button
+            type="button"
+            className="btn products-inventory-page__btn-outline"
+            onClick={exportMaterialsXlsx}
+            title="Baixar Excel com níveis de estoque"
+          >
+            <i className="ri-file-excel-2-line me-1" aria-hidden />
+            Excel
           </button>
         </div>
       </div>

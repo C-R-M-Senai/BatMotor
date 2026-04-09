@@ -77,19 +77,32 @@ export async function createMovimentacao(
     },
   });
 
-  await prisma.estoqueAtual.upsert({
-    where: { materia_prima_id: materiaId },
-    update: {
-      quantidade:
-        body.tipo === TipoMovimentacao.ENTRADA
-          ? { increment: qtd }
-          : { decrement: qtd },
-    },
-    create: {
-      materia_prima_id: materiaId,
-      quantidade: body.tipo === TipoMovimentacao.ENTRADA ? qtd : 0,
-    },
-  });
+  if (body.tipo === TipoMovimentacao.AJUSTE) {
+    const estoque = await prisma.estoqueAtual.findUnique({
+      where: { materia_prima_id: materiaId },
+    });
+    const atual = estoque?.quantidade ?? 0;
+    const novo = Math.max(0, atual + qtd);
+    await prisma.estoqueAtual.upsert({
+      where: { materia_prima_id: materiaId },
+      update: { quantidade: novo },
+      create: { materia_prima_id: materiaId, quantidade: novo },
+    });
+  } else {
+    await prisma.estoqueAtual.upsert({
+      where: { materia_prima_id: materiaId },
+      update: {
+        quantidade:
+          body.tipo === TipoMovimentacao.ENTRADA
+            ? { increment: qtd }
+            : { decrement: qtd },
+      },
+      create: {
+        materia_prima_id: materiaId,
+        quantidade: body.tipo === TipoMovimentacao.ENTRADA ? qtd : 0,
+      },
+    });
+  }
 
   return registro;
 }

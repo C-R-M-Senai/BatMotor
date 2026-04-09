@@ -2,8 +2,15 @@ import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { mapMaterialFromApi } from "../batmotorAdapters.js";
 
-async function fetchMaterialsRemote() {
-  const { data: materias } = await api.get("/materia-prima");
+async function fetchMaterialsRemote(params = {}) {
+  const query = {};
+  if (params.categoria) query.categoria = params.categoria;
+  if (params.busca) query.busca = params.busca;
+  if (params.ativo === true) query.ativo = "true";
+  if (params.ativo === false) query.ativo = "false";
+  const { data: materias } = await api.get("/materia-prima", {
+    params: Object.keys(query).length ? query : undefined
+  });
   const { data: estoqueRows } = await api.get("/estoque-atual");
   const list = Array.isArray(materias) ? materias : [];
   const saldoByMateria = Object.fromEntries(
@@ -21,7 +28,7 @@ export async function fetchMaterials(params = {}) {
       (m) => m.name.toLowerCase().includes(term) || m.category.toLowerCase().includes(term)
     );
   }
-  const all = await fetchMaterialsRemote();
+  const all = await fetchMaterialsRemote(params);
   const term = String(params.search || "").toLowerCase();
   if (!term) return all;
   return all.filter(
@@ -86,15 +93,18 @@ export async function updateMaterial(id, payload) {
   };
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
   const { data } = await api.put(`/materia-prima/${id}`, body);
+  const updated = data?.materia ?? data;
   let saldo = 0;
   try {
     const { data: estoqueRows } = await api.get("/estoque-atual");
-    const row = (Array.isArray(estoqueRows) ? estoqueRows : []).find((r) => r.materia_prima_id === data.id);
+    const row = (Array.isArray(estoqueRows) ? estoqueRows : []).find(
+      (r) => r.materia_prima_id === updated.id
+    );
     if (row) saldo = Number(row.quantidade) || 0;
   } catch {
     /* ignore */
   }
-  return mapMaterialFromApi(data, saldo);
+  return mapMaterialFromApi(updated, saldo);
 }
 
 export async function deleteMaterial(id) {

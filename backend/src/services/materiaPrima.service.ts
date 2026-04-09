@@ -1,3 +1,4 @@
+import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 
 export function createMateriaPrima(data: {
@@ -18,8 +19,29 @@ export function createMateriaPrima(data: {
   });
 }
 
-export function listMateriaPrima() {
-  return prisma.materiaPrima.findMany();
+export function listMateriaPrima(filters?: {
+  categoria?: string;
+  busca?: string;
+  ativo?: boolean;
+}) {
+  const where: Prisma.MateriaPrimaWhereInput = {};
+  if (filters?.categoria?.trim()) {
+    where.categoria = { equals: filters.categoria.trim() };
+  }
+  if (filters?.ativo !== undefined) {
+    where.ativo = filters.ativo;
+  }
+  const q = filters?.busca?.trim();
+  if (q) {
+    where.OR = [
+      { nome: { contains: q } },
+      { categoria: { contains: q } },
+    ];
+  }
+  return prisma.materiaPrima.findMany({
+    where,
+    orderBy: { nome: "asc" },
+  });
 }
 
 export function findMateriaPrima(id: number) {

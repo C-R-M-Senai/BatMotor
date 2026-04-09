@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { downloadXlsx } from "@/utils/exportXlsx";
 import { useEffect, useMemo, useState } from "react";
 import { usePermissions } from "@/context/PermissionsContext";
 import AddProductModal from "../components/AddProductModal";
@@ -276,6 +277,35 @@ export default function ProductsPage() {
     setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
   };
 
+  const exportCatalogXlsx = () => {
+    if (!rows.length) {
+      setFeedback({ text: "Não há produtos para exportar.", kind: "info" });
+      return;
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    downloadXlsx(
+      `inventario-produtos-batmotor-${day}.xlsx`,
+      "Inventario",
+      {
+        name: "Produto",
+        code: "Codigo",
+        description: "Descricao",
+        supplierName: "Fornecedor",
+        category: "Categoria",
+        salePrice: "Valor",
+        active: "Ativo",
+        outOfStock: "Fora estoque"
+      },
+      rows.map((r) => ({
+        ...r,
+        salePrice: formatBRL(r.salePrice),
+        active: r.active ? "Sim" : "Não",
+        outOfStock: r.outOfStock ? "Sim" : "Não"
+      }))
+    );
+    setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+  };
+
   const pageNumbers = useMemo(() => {
     const maxVis = 5;
     if (totalPages <= maxVis) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -400,8 +430,12 @@ export default function ProductsPage() {
             </button>
           ) : null}
           <button type="button" className="btn products-catalog-page__btn-outline" onClick={exportCatalogPdf}>
-            <i className="ri-file-download-line me-1" aria-hidden />
-            Exportar
+            <i className="ri-file-pdf-line me-1" aria-hidden />
+            PDF
+          </button>
+          <button type="button" className="btn products-catalog-page__btn-outline" onClick={exportCatalogXlsx}>
+            <i className="ri-file-excel-2-line me-1" aria-hidden />
+            Excel
           </button>
           {canManageInventory ? (
             <button type="button" className="btn products-catalog-page__btn-primary" onClick={openNewProduct}>

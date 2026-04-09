@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { downloadXlsx } from "@/utils/exportXlsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SuppliersGlassSelect from "../components/SuppliersGlassSelect";
 import { ExpiryDateField, formatDMY, parseDMY } from "../components/OrangeCalendarPopover";
@@ -331,6 +332,40 @@ function SuppliersPage() {
     setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
   };
 
+  const exportXlsx = () => {
+    if (!suppliers.length) {
+      setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
+      return;
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    downloadXlsx(
+      `fornecedores-batmotor-${day}.xlsx`,
+      "Fornecedores",
+      {
+        name: "Empresa",
+        code: "ID",
+        contactPerson: "Contato",
+        email: "E-mail",
+        phone: "Telefone",
+        materialsCount: "Produtos",
+        status: "Status"
+      },
+      suppliers.map((s) => {
+        const st = rowStatus(s);
+        return {
+          name: s.name,
+          code: formatSupplierCode(s),
+          contactPerson: s.contactPerson || "—",
+          email: s.email || "—",
+          phone: s.phone || s.contact || "—",
+          materialsCount: materialsBySupplier[s.id] || 0,
+          status: st.label
+        };
+      })
+    );
+    setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+  };
+
   const parseImportText = async (text) => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
     let added = 0;
@@ -398,9 +433,13 @@ function SuppliersPage() {
             <i className="ri-file-upload-line me-1" aria-hidden />
             Importar
           </button>
-          <button type="button" className="btn suppliers-page__btn-outline" onClick={exportPdf}>
-            <i className="ri-file-download-line me-1" aria-hidden />
-            Exportar
+          <button type="button" className="btn suppliers-page__btn-outline" onClick={exportPdf} title="Baixar lista em PDF">
+            <i className="ri-file-pdf-line me-1" aria-hidden />
+            PDF
+          </button>
+          <button type="button" className="btn suppliers-page__btn-outline" onClick={exportXlsx} title="Baixar lista em Excel">
+            <i className="ri-file-excel-2-line me-1" aria-hidden />
+            Excel
           </button>
           <button type="button" className="btn suppliers-page__btn-primary" onClick={openAddModal}>
             <i className="ri-add-line me-1" aria-hidden />

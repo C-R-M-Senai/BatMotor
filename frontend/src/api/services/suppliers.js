@@ -52,6 +52,7 @@ export async function createSupplier(payload) {
     email: payload.email || undefined,
     telefone: (payload.phone || payload.contact || "").replace(/\D/g, "") || undefined
   };
+  if (payload.active !== undefined) body.ativo = Boolean(payload.active);
   const { data } = await api.post("/fornecedores", body);
   return mapSupplierFromApi(data);
 }
@@ -74,6 +75,7 @@ export async function updateSupplier(id, payload) {
   if (payload.phone !== undefined || payload.contact !== undefined) {
     body.telefone = String(payload.phone || payload.contact || "").replace(/\D/g, "") || undefined;
   }
+  if (payload.active !== undefined) body.ativo = Boolean(payload.active);
   const { data } = await api.put(`/fornecedores/${id}`, body);
   return mapSupplierFromApi(data);
 }

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { createUser, deleteUser, fetchUsers } from "@/api";
 import { formatCpfDisplay, normalizeCpfDigits } from "@/utils/cpf";
+import { downloadXlsx } from "@/utils/exportXlsx";
 import SuppliersGlassSelect from "@/components/SuppliersGlassSelect";
 
 const PAGE_SIZE = 8;
@@ -284,6 +287,68 @@ function UsersPage() {
     }
   };
 
+  const exportUsersPdf = () => {
+    if (!filteredUsers.length) {
+      setFeedback({ text: "Não há usuários na lista atual para exportar.", kind: "info" });
+      return;
+    }
+    setFeedback({ text: "", kind: "" });
+    const doc = new jsPDF({ orientation: "landscape" });
+    const now = new Date();
+    const ts = now.toLocaleString("pt-BR");
+    doc.setFontSize(14);
+    doc.text("Usuários do sistema - Batmotor", 14, 16);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${ts}`, 14, 23);
+    doc.text(`Registros (filtro atual): ${filteredUsers.length}`, 14, 29);
+
+    const body = filteredUsers.map((u) => [
+      u.name || "—",
+      u.email || "—",
+      u.cpf || "—",
+      accessLabel(u).text,
+      roleLabel(u.profileRole)
+    ]);
+
+    autoTable(doc, {
+      startY: 34,
+      head: [["Nome", "E-mail", "CPF", "Tipo de acesso", "Perfil"]],
+      body,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [29, 78, 216], textColor: 255 }
+    });
+
+    doc.save(`usuarios-batmotor-${now.toISOString().slice(0, 10)}.pdf`);
+    setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
+  };
+
+  const exportUsersXlsx = () => {
+    if (!filteredUsers.length) {
+      setFeedback({ text: "Não há usuários na lista atual para exportar.", kind: "info" });
+      return;
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    downloadXlsx(
+      `usuarios-batmotor-${day}.xlsx`,
+      "Usuarios",
+      {
+        name: "Nome",
+        email: "E-mail",
+        cpf: "CPF",
+        accessType: "Tipo de acesso",
+        profile: "Perfil"
+      },
+      filteredUsers.map((u) => ({
+        name: u.name,
+        email: u.email,
+        cpf: u.cpf,
+        accessType: accessLabel(u).text,
+        profile: roleLabel(u.profileRole)
+      }))
+    );
+    setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+  };
+
   return (
     <div className="suppliers-page users-page">
       <section className="suppliers-page__kpis users-page__kpis bm-kpis-row row g-4 gy-4 mb-4">
@@ -308,6 +373,24 @@ function UsersPage() {
           <p className="suppliers-page__subtitle">Cadastre contas e acompanhe quem acessa o painel (perfis vêm do backend)</p>
         </div>
         <div className="suppliers-page__actions">
+          <button
+            type="button"
+            className="btn suppliers-page__btn-outline"
+            onClick={exportUsersPdf}
+            title="Exportar lista atual (com filtros) em PDF"
+          >
+            <i className="ri-file-pdf-line me-1" aria-hidden />
+            PDF
+          </button>
+          <button
+            type="button"
+            className="btn suppliers-page__btn-outline"
+            onClick={exportUsersXlsx}
+            title="Exportar lista atual (com filtros) em Excel"
+          >
+            <i className="ri-file-excel-2-line me-1" aria-hidden />
+            Excel
+          </button>
           <button type="button" className="btn suppliers-page__btn-primary" onClick={openNewModal}>
             <i className="ri-user-add-line me-1" aria-hidden />
             Novo usuário

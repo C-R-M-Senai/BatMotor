@@ -2,10 +2,12 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMinStockAlerts, fetchStockSummary } from "@/api";
+import { downloadXlsxWorkbook } from "@/utils/exportXlsx";
 
 function ReportsPage() {
   const [summary, setSummary] = useState({ totalItems: 0, totalStock: 0, byMaterial: [] });
   const [alertCount, setAlertCount] = useState(0);
+  const [alertRows, setAlertRows] = useState([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -13,8 +15,15 @@ function ReportsPage() {
       .then((data) => setSummary(data))
       .catch(() => setSummary({ totalItems: 0, totalStock: 0, byMaterial: [] }));
     fetchMinStockAlerts()
-      .then((rows) => setAlertCount(Array.isArray(rows) ? rows.length : 0))
-      .catch(() => setAlertCount(0));
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        setAlertRows(list);
+        setAlertCount(list.length);
+      })
+      .catch(() => {
+        setAlertRows([]);
+        setAlertCount(0);
+      });
   }, []);
 
   const categoryCount = useMemo(() => {
@@ -78,12 +87,82 @@ function ReportsPage() {
     doc.setFontSize(11);
     doc.text(`Total de itens: ${summary.totalItems}`, 14, 24);
     doc.text(`Estoque total: ${summary.totalStock}`, 14, 30);
+    doc.text(`Alertas abaixo do minimo: ${alertCount}`, 14, 36);
+    let y = 42;
     autoTable(doc, {
-      startY: 36,
-      head: [["Materia-prima", "Categoria", "Quantidade"]],
-      body: (summary.byMaterial || []).map((item) => [item.name, item.category, String(item.quantity)])
+      startY: y,
+      head: [["Materia-prima", "Categoria", "Qtd", "Minimo"]],
+      body: (summary.byMaterial || []).map((item) => [
+        item.name,
+        item.category,
+        String(item.quantity),
+        String(item.minStock ?? "—")
+      ])
     });
-    doc.save("relatorio-estoque-batmotor.pdf");
+    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 12 : y + 40;
+    doc.setFontSize(12);
+    doc.text("Itens abaixo do estoque minimo (compras)", 14, y);
+    y += 6;
+    autoTable(doc, {
+      startY: y,
+      head: [["Materia-prima", "Categoria", "Atual", "Minimo", "Deficit"]],
+      body: (alertRows || []).map((a) => [
+        a.name,
+        a.category,
+        String(a.currentStock),
+        String(a.minStock),
+        String(a.deficit != null ? a.deficit : Math.max(0, Number(a.minStock) - Number(a.currentStock)))
+      ])
+    });
+    doc.save(`relatorio-estoque-batmotor-${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const exportXlsx = () => {
+    const day = new Date().toISOString().slice(0, 10);
+    downloadXlsxWorkbook(`relatorio-estoque-batmotor-${day}.xlsx`, [
+      {
+        name: "Resumo",
+        columns: {
+          name: "Materia-prima",
+          category: "Categoria",
+          quantity: "Quantidade",
+          minStock: "Estoque minimo"
+        },
+        rows: (summary.byMaterial || []).map((item) => ({
+          name: item.name,
+          category: item.category,
+          quantity: item.quantity,
+          minStock: item.minStock
+        }))
+      },
+      {
+        name: "Alertas_minimo",
+        columns: {
+          name: "Materia-prima",
+          category: "Categoria",
+          currentStock: "Quantidade atual",
+          minStock: "Minimo",
+          deficit: "Deficit"
+        },
+        rows: (alertRows || []).map((a) => ({
+          name: a.name,
+          category: a.category,
+          currentStock: a.currentStock,
+          minStock: a.minStock,
+          deficit:
+            a.deficit != null ? a.deficit : Math.max(0, Number(a.minStock) - Number(a.currentStock))
+        }))
+      },
+      {
+        name: "Indicadores",
+        columns: { k: "Indicador", v: "Valor" },
+        rows: [
+          { k: "Total itens", v: summary.totalItems },
+          { k: "Estoque total", v: summary.totalStock },
+          { k: "Alertas minimos", v: alertCount }
+        ]
+      }
+    ]);
   };
 
   return (
@@ -93,14 +172,20 @@ function ReportsPage() {
           <p className="inventory-page__eyebrow">Analiticos</p>
           <h4 className="inventory-page__title">Relatorios de estoque</h4>
           <p className="inventory-page__subtitle">
-            Visao consolidada dos niveis de estoque e exportacao em PDF com os dados atuais do backend.
+            Exportacao em PDF e Excel (XLSX): estoque por materia-prima, indicadores e alertas abaixo do minimo.
           </p>
         </div>
         <div className="d-flex flex-column align-items-end gap-2 flex-shrink-0">
-          <button type="button" className="btn btn-primary" onClick={exportPdf}>
-            <i className="ri-file-download-line me-1" aria-hidden />
-            Baixar PDF
-          </button>
+          <div className="d-flex flex-wrap gap-2 justify-content-end">
+            <button type="button" className="btn btn-outline-primary" onClick={exportXlsx}>
+              <i className="ri-file-excel-2-line me-1" aria-hidden />
+              Baixar Excel
+            </button>
+            <button type="button" className="btn btn-primary" onClick={exportPdf}>
+              <i className="ri-file-pdf-line me-1" aria-hidden />
+              Baixar PDF
+            </button>
+          </div>
           <div className="inventory-page__hero-tag inventory-page__hero-tag--accent">
             <i className="ri-file-chart-line" aria-hidden />
             <span>Resumo por materia-prima</span>
@@ -146,7 +231,7 @@ function ReportsPage() {
           <div>
             <h5 className="card-title mb-1">Detalhamento por materia-prima</h5>
             <p className="inventory-table-card__desc mb-0">
-              {filteredRows.length} registro(s) — mesmos dados incluidos no arquivo PDF.
+              {filteredRows.length} registro(s) — incluidos nos arquivos PDF e Excel.
             </p>
           </div>
           <span className="inventory-table-card__badge">Atualizado agora</span>

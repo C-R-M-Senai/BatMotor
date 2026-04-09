@@ -71,6 +71,7 @@ model Fornecedor {
   cnpj     String  @unique
   email    String?
   telefone String?
+  ativo    Boolean @default(true)
 
   materiasFornecedores MateriaFornecedor[]
 }
@@ -131,4 +132,6 @@ model Movimentacao {
 enum TipoMovimentacao {
   ENTRADA
   SAIDA
+  /** Correção de inventário: altera saldo pelo delta em `quantidade` (pode ser negativo). */
+  AJUSTE
 }

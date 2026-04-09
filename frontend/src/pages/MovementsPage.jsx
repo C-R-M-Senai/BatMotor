@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { downloadXlsx } from "@/utils/exportXlsx";
 import { useEffect, useMemo, useState } from "react";
 import { createMovement, fetchMaterials, fetchMovements } from "@/api";
 import { ExpiryDateField, formatDMY, parseDMY } from "../components/OrangeCalendarPopover";
@@ -249,6 +250,41 @@ function MovementsPage() {
     setFeedback({ text: "PDF exportado.", kind: "success" });
   };
 
+  const exportHistoryXlsx = () => {
+    if (!filteredHistory.length) {
+      setFeedback({ text: "Não há registros para exportar.", kind: "info" });
+      return;
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    downloadXlsx(
+      `movimentacoes-batmotor-${day}.xlsx`,
+      "Movimentacoes",
+      {
+        dataHora: "Data/Hora",
+        tipo: "Tipo",
+        produto: "Produto",
+        qtd: "Quantidade",
+        estoqueAtual: "Estoque atual",
+        responsavel: "Responsavel",
+        motivo: "Motivo"
+      },
+      filteredHistory.map((mv) => {
+        const mat = materialsById[mv.materialId];
+        const { motivo } = notesParts(mv.notes);
+        return {
+          dataHora: formatMovementDate(mv.createdAt),
+          tipo: movementLabel(mv.type),
+          produto: mat?.name || "—",
+          qtd: mv.quantity,
+          estoqueAtual: mat?.currentStock ?? "—",
+          responsavel: responsibleName(),
+          motivo
+        };
+      })
+    );
+    setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+  };
+
   const qtyDisplay = (type, qty) => {
     const n = Number(qty) || 0;
     if (type === "IN") return { text: `+${n}`, className: "movements-estocae__qty--in" };
@@ -451,10 +487,16 @@ function MovementsPage() {
                 allowEmpty={false}
               />
             </div>
-            <button type="button" className="btn movements-estocae__btn-export" onClick={exportHistoryPdf}>
-              <i className="ri-file-download-line me-1" aria-hidden />
-              Exportar
-            </button>
+            <div className="d-flex flex-wrap gap-2">
+              <button type="button" className="btn movements-estocae__btn-export" onClick={exportHistoryPdf}>
+                <i className="ri-file-pdf-line me-1" aria-hidden />
+                PDF
+              </button>
+              <button type="button" className="btn movements-estocae__btn-export" onClick={exportHistoryXlsx}>
+                <i className="ri-file-excel-2-line me-1" aria-hidden />
+                Excel
+              </button>
+            </div>
           </div>
         </div>
 

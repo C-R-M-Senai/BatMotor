@@ -25,6 +25,7 @@ import * as materiaPrimaController from "../controllers/materiaPrima.controller"
 import * as permissaoModuloController from "../controllers/permissaoModulo.controller";
 import * as movimentacaoController from "../controllers/movimentacao.controller";
 import * as estoqueController from "../controllers/estoque.controller";
+import * as relatorioController from "../controllers/relatorio.controller";
 import * as testeController from "../controllers/teste.controller";
 import { authenticate, optionalAuthenticate } from "../middlewares/authenticate";
 import { requireRole, requireRoleFromDb } from "../middlewares/authorize";
@@ -186,6 +187,12 @@ export function registerRoutes(app: Express): void {
 
   /** Saldo atual por matéria-prima (nova rota em relação ao arquivo único antigo). */
   r.get("/estoque-atual", asyncHandler(estoqueController.list));
+
+  /** Relatório: matérias-primas abaixo do estoque mínimo (compras / alertas). */
+  r.get(
+    "/relatorios/estoque-baixo",
+    asyncHandler(relatorioController.estoqueBaixo),
+  );
 
   /* -------- Modelo de exemplo no schema (opcional em produção) -------- */
   r.get("/teste", adminOnly, asyncHandler(testeController.list));

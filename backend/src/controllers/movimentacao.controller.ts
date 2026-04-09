@@ -2,6 +2,20 @@ import type { Request, Response } from "express";
 import { Role, TipoMovimentacao } from "../generated/prisma/client";
 import * as svc from "../services/movimentacao.service";
 
+function parseLargeOutThreshold(): number {
+  const n = Number(process.env.LARGE_OUT_THRESHOLD);
+  if (Number.isFinite(n) && n > 0) return n;
+  return 500;
+}
+
+function isTipoValido(t: unknown): t is TipoMovimentacao {
+  return (
+    t === TipoMovimentacao.ENTRADA ||
+    t === TipoMovimentacao.SAIDA ||
+    t === TipoMovimentacao.AJUSTE
+  );
+}
+
 export async function create(req: Request, res: Response) {
   const { materia_prima_id, tipo, quantidade, motivo, usuario_id } =
     req.body ?? {};
@@ -13,24 +27,42 @@ export async function create(req: Request, res: Response) {
   ) {
     return res.status(400).json({
       error:
-        "Campos obrigatórios: materia_prima_id, tipo (ENTRADA|SAIDA), quantidade",
+        "Campos obrigatórios: materia_prima_id, tipo (ENTRADA|SAIDA|AJUSTE), quantidade",
     });
   }
-  if (tipo !== TipoMovimentacao.ENTRADA && tipo !== TipoMovimentacao.SAIDA) {
-    return res.status(400).json({ error: "tipo deve ser ENTRADA ou SAIDA" });
+  if (!isTipoValido(tipo)) {
+    return res
+      .status(400)
+      .json({ error: "tipo deve ser ENTRADA, SAIDA ou AJUSTE" });
   }
 
   const authHeader = req.auth;
   let authCtx: { userId: number; roles: Role[] };
 
   if (authHeader) {
-    const isAdmin = authHeader.roles.includes(Role.ADMIN);
-    const isFunc = authHeader.roles.includes(Role.FUNCIONARIO);
-    if (!isAdmin && !isFunc) {
+    const podeMovimentar =
+      authHeader.roles.includes(Role.ADMIN) ||
+      authHeader.roles.includes(Role.GERENTE) ||
+      authHeader.roles.includes(Role.FUNCIONARIO);
+    if (!podeMovimentar) {
       return res.status(403).json({
         error:
-          "Com login JWT, apenas ADMIN ou FUNCIONARIO podem registrar nova movimentação.",
+          "Com login JWT, apenas ADMIN, GERENTE ou FUNCIONARIO podem registrar movimentação.",
       });
+    }
+    const qtdNum = Number(quantidade);
+    if (
+      tipo === TipoMovimentacao.SAIDA &&
+      qtdNum >= parseLargeOutThreshold()
+    ) {
+      const podeGrandeBaixa =
+        authHeader.roles.includes(Role.ADMIN) ||
+        authHeader.roles.includes(Role.GERENTE);
+      if (!podeGrandeBaixa) {
+        return res.status(403).json({
+          error: `Saídas de ${parseLargeOutThreshold()} unidades ou mais exigem perfil GERENTE ou ADMIN (Batmotor: controle de baixas críticas).`,
+        });
+      }
     }
     authCtx = { userId: authHeader.userId, roles: authHeader.roles };
   } else {
@@ -97,12 +129,10 @@ export async function update(req: Request, res: Response) {
   if (Number.isNaN(id)) {
     return res.status(400).json({ error: "Id inválido" });
   }
-  if (
-    tipo != null &&
-    tipo !== TipoMovimentacao.ENTRADA &&
-    tipo !== TipoMovimentacao.SAIDA
-  ) {
-    return res.status(400).json({ error: "tipo deve ser ENTRADA ou SAIDA" });
+  if (tipo != null && !isTipoValido(tipo)) {
+    return res
+      .status(400)
+      .json({ error: "tipo deve ser ENTRADA, SAIDA ou AJUSTE" });
   }
   const row = await svc.updateMovimentacao(id, {
     materia_prima_id:
