@@ -21,6 +21,20 @@ export async function fetchUserById(id) {
   return data;
 }
 
+/** PATCH /users/me — usuário autenticado (funcionário: só nome; gerente/admin: nome, e-mail, senha) */
+export async function updateUsuarioMe(body) {
+  if (getUseMock()) return null;
+  try {
+    const { data } = await api.patch("/users/me", body);
+    return data;
+  } catch (e) {
+    const msg = apiErrorMessage(e);
+    const err = new Error(msg || e.message || "Não foi possível atualizar o perfil.");
+    err.response = e.response;
+    throw err;
+  }
+}
+
 /** PUT /users/:id — admin only */
 export async function updateUsuario(id, body) {
   if (getUseMock()) return null;

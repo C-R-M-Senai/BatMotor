@@ -35,3 +35,36 @@ export async function fetchStockSummary() {
   const materials = await fetchMaterials();
   return stockSummaryFromMaterials(materials);
 }
+
+/** Série diária real: entrada / saída / ajuste (GET /relatorios/movimentacoes-por-dia). */
+export async function fetchMovimentacoesPorDia(dias = 14) {
+  if (getUseMock()) {
+    await mockDelay();
+    const n = Math.min(90, Math.max(7, Number(dias) || 14));
+    const serie = Array.from({ length: n }, (_, i) => ({
+      data_iso: `mock-${i}`,
+      label: `D${i + 1}`,
+      entrada: (i * 3 + 5) % 40,
+      saida: (i * 2 + 8) % 35,
+      ajuste: i % 5 === 0 ? 2 : 0
+    }));
+    return { dias: n, serie };
+  }
+  const { data } = await api.get("/relatorios/movimentacoes-por-dia", {
+    params: { dias }
+  });
+  return {
+    dias: data?.dias ?? (Array.isArray(data?.serie) ? data.serie.length : 0),
+    serie: Array.isArray(data?.serie) ? data.serie : []
+  };
+}
+
+/** Dispara e-mail de alerta de estoque mínimo (ADMIN/GERENTE). Requer SMTP no backend. */
+export async function sendLowStockAlertEmail() {
+  if (getUseMock()) {
+    await mockDelay();
+    return { message: "Mock: e-mail não enviado.", enviado: false, total_alertas: 0 };
+  }
+  const { data } = await api.post("/relatorios/estoque-baixo/enviar-email");
+  return data;
+}

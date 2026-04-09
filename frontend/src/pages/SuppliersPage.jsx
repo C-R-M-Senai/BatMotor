@@ -192,6 +192,13 @@ function SuppliersPage() {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
 
+  useEffect(() => {
+    if (!canManageInventory) {
+      setFormOpen(false);
+      setImportOpen(false);
+    }
+  }, [canManageInventory]);
+
   const pageNumbers = useMemo(() => {
     const maxVis = 5;
     if (pageCount <= maxVis) return Array.from({ length: pageCount }, (_, i) => i + 1);
@@ -206,6 +213,7 @@ function SuppliersPage() {
   }, [pageCount, safePage]);
 
   const openAddModal = () => {
+    if (!canManageInventory) return;
     setEditingId(null);
     setFullForm({ ...INITIAL_FULL_FORM, active: true });
     setSinceStr("");
@@ -215,6 +223,7 @@ function SuppliersPage() {
   };
 
   const openEditModal = (supplier) => {
+    if (!canManageInventory) return;
     setEditingId(supplier.id);
     const iso = (supplier.since || "").trim();
     const dt = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? dateFromIso(iso) : null;
@@ -249,6 +258,7 @@ function SuppliersPage() {
 
   const handleSaveFull = async (e) => {
     e.preventDefault();
+    if (!canManageInventory) return;
     if (!fullForm.name?.trim()) {
       setFeedback({ text: "Informe o nome do fornecedor.", kind: "danger" });
       return;
@@ -283,6 +293,7 @@ function SuppliersPage() {
   };
 
   const handleDelete = async (supplier) => {
+    if (!canManageInventory) return;
     if (!window.confirm(`Excluir fornecedor "${supplier.name}"? Materiais podem ficar sem vínculo.`)) return;
     try {
       await deleteSupplier(supplier.id);
@@ -294,6 +305,7 @@ function SuppliersPage() {
   };
 
   const exportPdf = async () => {
+    if (!canManageInventory) return;
     if (!suppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
@@ -344,6 +356,7 @@ function SuppliersPage() {
   };
 
   const exportXlsx = async () => {
+    if (!canManageInventory) return;
     if (!suppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
@@ -404,6 +417,7 @@ function SuppliersPage() {
   };
 
   const runImport = async () => {
+    if (!canManageInventory) return;
     if (!importFile) return;
     setIsSaving(true);
     try {
@@ -444,22 +458,33 @@ function SuppliersPage() {
           <p className="suppliers-page__subtitle">Gerencie seus fornecedores e relacionamento com vendedores</p>
         </div>
         <div className="suppliers-page__actions">
-          <button type="button" className="btn suppliers-page__btn-outline" onClick={() => setImportOpen(true)}>
-            <i className="ri-file-upload-line me-1" aria-hidden />
-            Importar
-          </button>
-          <button type="button" className="btn suppliers-page__btn-outline" onClick={exportPdf} title="Baixar lista em PDF">
-            <i className="ri-file-pdf-line me-1" aria-hidden />
-            PDF
-          </button>
-          <button type="button" className="btn suppliers-page__btn-outline" onClick={exportXlsx} title="Baixar lista em Excel">
-            <i className="ri-file-excel-2-line me-1" aria-hidden />
-            Excel
-          </button>
-          <button type="button" className="btn suppliers-page__btn-primary" onClick={openAddModal}>
-            <i className="ri-add-line me-1" aria-hidden />
-            Adicionar fornecedor
-          </button>
+          {canManageInventory ? (
+            <>
+              <button type="button" className="btn suppliers-page__btn-outline" onClick={() => setImportOpen(true)}>
+                <i className="ri-file-upload-line me-1" aria-hidden />
+                Importar
+              </button>
+              <button type="button" className="btn suppliers-page__btn-outline" onClick={exportPdf} title="Baixar lista em PDF">
+                <i className="ri-file-pdf-line me-1" aria-hidden />
+                PDF
+              </button>
+              <button
+                type="button"
+                className="btn suppliers-page__btn-outline"
+                onClick={exportXlsx}
+                title="Baixar lista em Excel"
+              >
+                <i className="ri-file-excel-2-line me-1" aria-hidden />
+                Excel
+              </button>
+              <button type="button" className="btn suppliers-page__btn-primary" onClick={openAddModal}>
+                <i className="ri-add-line me-1" aria-hidden />
+                Adicionar fornecedor
+              </button>
+            </>
+          ) : (
+            <p className="small text-muted mb-0 align-self-center">Visualização: apenas gerência altera ou exporta fornecedores.</p>
+          )}
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import {
   fetchPerfis,
   fetchUserById,
   updateUsuario,
+  updateUsuarioMe,
   updateUsuarioPerfilLink
 } from "@/api/services/profileAdmin.js";
 
@@ -56,6 +57,8 @@ const ACCESS_LEVEL_OPTIONS_STAFF = [
 ];
 
 const ACCESS_LEVEL_ADMIN_READONLY = [{ value: "ADMIN", label: "Administrador" }];
+
+const ACCESS_LEVEL_EMPLOYEE_READONLY = [{ value: "FUNCIONARIO", label: "Funcionário" }];
 
 const BATMOTOR_USER_ID_KEY = "batmotor-user-id";
 
@@ -141,6 +144,7 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
   const fileInputRef = useRef(null);
 
   const isAdmin = accountKind === ACCOUNT_KIND.admin;
+  const isEmployee = accountKind === ACCOUNT_KIND.employee;
 
   useEffect(() => {
     const { first, rest } = splitName(userName);
@@ -158,7 +162,7 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
   }, [accountKind]);
 
   useEffect(() => {
-    if (isAdmin || getUseMock()) return undefined;
+    if (isAdmin || isEmployee || getUseMock()) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -181,7 +185,7 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [isAdmin, isEmployee]);
 
   const previewSrc = useMemo(() => {
     if (avatarEdit.type === "new") return avatarEdit.dataUrl;
@@ -313,7 +317,32 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
       return;
     }
 
-    /** Gerente / Funcionário: e-mail, senha opcional, nível só Gerente ou Funcionário. */
+    /** Funcionário: só nome, sobrenome e foto; e-mail e senha definidos pela empresa. */
+    if (isEmployee) {
+      const keepEmail = String(userEmail || "").trim();
+      if (getUseMock()) {
+        onSaveProfile({ displayName, displayEmail: keepEmail, avatarDataUrl });
+        setAvatarEdit({ type: "none" });
+        setProfileMessage({ text: "Perfil atualizado (modo demo local).", kind: "success" });
+        return;
+      }
+      const uid = Number(localStorage.getItem(BATMOTOR_USER_ID_KEY));
+      if (!Number.isFinite(uid) || uid <= 0) {
+        setProfileMessage({ text: "Sessão sem ID de usuário. Faça login novamente.", kind: "danger" });
+        return;
+      }
+      try {
+        await updateUsuarioMe({ nome: displayName });
+        onSaveProfile({ displayName, displayEmail: keepEmail, avatarDataUrl });
+        setAvatarEdit({ type: "none" });
+        setProfileMessage({ text: "Perfil atualizado com sucesso.", kind: "success" });
+      } catch (err) {
+        setProfileMessage({ text: err?.message || "Falha ao salvar perfil.", kind: "danger" });
+      }
+      return;
+    }
+
+    /** Gerente: e-mail, senha opcional, nível só Gerente ou Funcionário (demo). */
     if (getUseMock()) {
       if (newPassword && newPassword !== confirmPassword) {
         setProfileMessage({ text: "Senhas não coincidem.", kind: "danger" });
@@ -365,7 +394,7 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
 
     try {
       if (!roleChanged && !passwordChanged) {
-        await updateUsuario(uid, {
+        await updateUsuarioMe({
           nome: displayName,
           email: email.trim()
         });
@@ -380,7 +409,7 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
         email: email.trim()
       };
       if (passwordChanged) body.senha = newPassword;
-      await updateUsuario(uid, body);
+      await updateUsuarioMe(body);
 
       const perfis = perfisCatalog.length ? perfisCatalog : await fetchPerfis();
       const alvo = perfis.find((p) => p.role === accessRoleKey);
@@ -847,9 +876,9 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
                     id="pf-email"
                     type="email"
                     className="form-control inventory-form__control"
-                    value={isAdmin ? userEmail || email : email}
-                    onChange={(e) => !isAdmin && setEmail(e.target.value)}
-                    readOnly={isAdmin}
+                    value={isAdmin || isEmployee ? userEmail || email : email}
+                    onChange={(e) => !isAdmin && !isEmployee && setEmail(e.target.value)}
+                    readOnly={isAdmin || isEmployee}
                     autoComplete="email"
                   />
                   {isAdmin ? (
@@ -858,8 +887,13 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
                       foto).
                     </p>
                   ) : null}
+                  {isEmployee ? (
+                    <p className="small text-muted mb-0">
+                      E-mail e senha são definidos pela empresa. Você pode alterar nome, sobrenome e foto do perfil.
+                    </p>
+                  ) : null}
                 </div>
-                {isAdmin ? null : (
+                {isAdmin || isEmployee ? null : (
                   <>
                     <div className="inventory-form__field">
                       <label className="inventory-form__label" htmlFor="pf-new-pwd">
@@ -926,16 +960,24 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
                   <SuppliersGlassSelect
                     id="pf-access"
                     listLabelledBy="pf-access-label"
-                    value={isAdmin ? "ADMIN" : accessRoleKey}
-                    onChange={(v) => !isAdmin && setAccessRoleKey(v)}
-                    options={isAdmin ? ACCESS_LEVEL_ADMIN_READONLY : ACCESS_LEVEL_OPTIONS_STAFF}
+                    value={isAdmin ? "ADMIN" : isEmployee ? "FUNCIONARIO" : accessRoleKey}
+                    onChange={(v) => !isAdmin && !isEmployee && setAccessRoleKey(v)}
+                    options={
+                      isAdmin
+                        ? ACCESS_LEVEL_ADMIN_READONLY
+                        : isEmployee
+                          ? ACCESS_LEVEL_EMPLOYEE_READONLY
+                          : ACCESS_LEVEL_OPTIONS_STAFF
+                    }
                     allowEmpty={false}
-                    disabled={isAdmin}
+                    disabled={isAdmin || isEmployee}
                   />
                   {isAdmin ? (
                     <p className="small text-muted mb-0">
                       Existe apenas um administrador no sistema; o nível não pode ser alterado aqui.
                     </p>
+                  ) : isEmployee ? (
+                    <p className="small text-muted mb-0">O nível de acesso é definido pela gerência.</p>
                   ) : (
                     <p className="small text-muted mb-0">
                       Escolha <strong>Gerente</strong> ou <strong>Funcionário</strong>.

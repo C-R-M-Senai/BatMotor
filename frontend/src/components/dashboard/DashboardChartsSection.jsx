@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
@@ -189,16 +190,84 @@ function CategoriesCard({ categoriesData }) {
   );
 }
 
-function DashboardChartsSection({ categoriesData, summary }) {
+/** Barras com quantidades reais de ENTRADA / SAÍDA / AJUSTE por dia (API). */
+function EntradaSaidaAlmoxarifadoCard({ serie }) {
+  const data = useMemo(() => (Array.isArray(serie) && serie.length > 0 ? serie : []), [serie]);
+  const hasMovement = data.some(
+    (d) => (Number(d.entrada) || 0) > 0 || (Number(d.saida) || 0) > 0 || (Number(d.ajuste) || 0) !== 0
+  );
+  const chartData = data.length > 0 ? data : [{ label: "—", entrada: 0, saida: 0, ajuste: 0 }];
+
   return (
-    <div className="row gx-4 gy-4 align-items-stretch dashboard-row--stock-layout">
-      <div className="col-12 col-xl-7 dashboard-charts-stock-col">
-        <StockControlChart summary={summary} />
+    <div className="card mb-0 dashboard-panel dashboard-panel--light h-100">
+      <div className="card-header dashboard-panel__head">
+        <div>
+          <h5 className="card-title mb-0 dashboard-panel__title-flat">Entradas e saídas (almoxarifado)</h5>
+          <p className="small text-muted mb-0 mt-1">
+            Volume diário registrado no sistema — compras (entrada), linha de montagem (saída) e ajustes de
+            inventário. Últimos {chartData.length} dias.
+          </p>
+        </div>
       </div>
-      <div className="col-12 col-xl-5 dashboard-charts-categories-col">
-        <CategoriesCard categoriesData={categoriesData} />
+      <div className="card-body pt-2">
+        {data.length > 0 && !hasMovement ? (
+          <p className="text-muted small mb-2">
+            Sem movimentações neste período. Registre entradas e saídas em «Movimentações» para preencher o gráfico.
+          </p>
+        ) : null}
+        <div className="chart-height chart-height--stock-control">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ top: 8, right: 10, left: 4, bottom: 4 }}
+              barGap={2}
+              barCategoryGap="18%"
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: "#64748b", fontSize: 10 }}
+                axisLine={{ stroke: "#cbd5e1" }}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis tick={{ fill: "#64748b", fontSize: 12 }} allowDecimals={false} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 4px 12px rgba(15,39,68,0.1)"
+                }}
+              />
+              <Legend wrapperStyle={{ color: "#334155" }} />
+              <Bar dataKey="entrada" name="Entrada" fill="#22c55e" maxBarSize={32} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="saida" name="Saída" fill="#ef4444" maxBarSize={32} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="ajuste" name="Ajuste" fill="#ca8a04" maxBarSize={24} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
+  );
+}
+
+function DashboardChartsSection({ categoriesData, summary, movimentacoesSerie = [] }) {
+  return (
+    <>
+      <div className="row gx-4 gy-4 align-items-stretch dashboard-row--stock-layout">
+        <div className="col-12 col-xl-7 dashboard-charts-stock-col">
+          <StockControlChart summary={summary} />
+        </div>
+        <div className="col-12 col-xl-5 dashboard-charts-categories-col">
+          <CategoriesCard categoriesData={categoriesData} />
+        </div>
+      </div>
+      <div className="row gx-4 gy-4 align-items-stretch mt-1">
+        <div className="col-12">
+          <EntradaSaidaAlmoxarifadoCard serie={movimentacoesSerie} />
+        </div>
+      </div>
+    </>
   );
 }
 

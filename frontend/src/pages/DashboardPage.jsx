@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchMinStockAlerts, fetchStockSummary, fetchSuppliers } from "@/api";
+import {
+  fetchMinStockAlerts,
+  fetchMovimentacoesPorDia,
+  fetchStockSummary,
+  fetchSuppliers
+} from "@/api";
 import DashboardKpis from "../components/dashboard/DashboardKpis";
 import DashboardChartsSection from "../components/dashboard/DashboardChartsSection";
 import DashboardBottomSection from "../components/dashboard/DashboardBottomSection";
@@ -8,21 +13,25 @@ function DashboardPage() {
   const [alerts, setAlerts] = useState([]);
   const [suppliersCount, setSuppliersCount] = useState(0);
   const [summary, setSummary] = useState({ totalItems: 0, totalStock: 0, byMaterial: [] });
+  const [movimentacoesSerie, setMovimentacoesSerie] = useState([]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [alertsData, summaryData, suppliersData] = await Promise.all([
+        const [alertsData, summaryData, suppliersData, movData] = await Promise.all([
           fetchMinStockAlerts(),
           fetchStockSummary(),
-          fetchSuppliers()
+          fetchSuppliers(),
+          fetchMovimentacoesPorDia(14)
         ]);
         setAlerts(alertsData);
         setSummary(summaryData);
         setSuppliersCount(suppliersData.length);
+        setMovimentacoesSerie(Array.isArray(movData?.serie) ? movData.serie : []);
       } catch (_err) {
         setAlerts([]);
         setSuppliersCount(0);
+        setMovimentacoesSerie([]);
       }
     };
     load();
@@ -43,7 +52,11 @@ function DashboardPage() {
         <DashboardKpis summary={summary} alertsCount={alerts.length} suppliersCount={suppliersCount} />
       </section>
       <section className="dashboard-section dashboard-section--charts-main">
-        <DashboardChartsSection categoriesData={categoriesData} summary={summary} />
+        <DashboardChartsSection
+          categoriesData={categoriesData}
+          summary={summary}
+          movimentacoesSerie={movimentacoesSerie}
+        />
       </section>
       <section className="dashboard-section dashboard-section--bottom-panels mt-1 mb-4">
         <DashboardBottomSection byMaterial={summary.byMaterial} />

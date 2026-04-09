@@ -23,5 +23,10 @@ export { loginRequest } from "./services/auth.js";
 export { fetchMaterials, createMaterial, updateMaterial, deleteMaterial } from "./services/materials.js";
 export { fetchSuppliers, createSupplier, updateSupplier, deleteSupplier } from "./services/suppliers.js";
 export { fetchMovements, createMovement } from "./services/movements.js";
-export { fetchMinStockAlerts, fetchStockSummary } from "./services/reports.js";
+export {
+  fetchMinStockAlerts,
+  fetchStockSummary,
+  fetchMovimentacoesPorDia,
+  sendLowStockAlertEmail
+} from "./services/reports.js";
 export { fetchUsers, createUser, deleteUser } from "./services/users.js";

@@ -2,6 +2,56 @@ import type { Request, Response } from "express";
 import { Role } from "../generated/prisma/client";
 import * as usuarioService from "../services/usuario.service";
 
+/**
+ * Perfil do usuário logado: funcionário só altera nome; gerente/admin podem incluir e-mail e senha.
+ */
+export async function updateMe(req: Request, res: Response) {
+  const auth = req.auth!;
+  const id = auth.userId;
+  const body = req.body ?? {};
+  const nome =
+    body.nome != null && String(body.nome).trim() !== "" ? String(body.nome).trim() : undefined;
+  const email =
+    body.email != null && String(body.email).trim() !== "" ? String(body.email).trim() : undefined;
+  const senha =
+    body.senha != null && String(body.senha) !== "" ? String(body.senha) : undefined;
+
+  const roles = await usuarioService.getRolesForUsuario(id);
+  const canChangeCredentials = roles.includes(Role.ADMIN) || roles.includes(Role.GERENTE);
+
+  if (!canChangeCredentials) {
+    if (email !== undefined || senha !== undefined) {
+      return res.status(403).json({
+        error:
+          "Funcionários não podem alterar e-mail nem senha. Peça à gerência para atualizar o cadastro.",
+      });
+    }
+    if (!nome) {
+      return res.status(400).json({ error: "Informe o nome." });
+    }
+    const row = await usuarioService.updateUsuario(id, { nome });
+    return res.status(200).json({
+      usuario: row,
+      message: "Usuário atualizado com sucesso",
+    });
+  }
+
+  const payload: { nome?: string; email?: string; senha?: string } = {};
+  if (nome) payload.nome = nome;
+  if (email) payload.email = email;
+  if (senha) payload.senha = senha;
+
+  if (Object.keys(payload).length === 0) {
+    return res.status(400).json({ error: "Nenhum campo para atualizar." });
+  }
+
+  const row = await usuarioService.updateUsuario(id, payload);
+  return res.status(200).json({
+    usuario: row,
+    message: "Usuário atualizado com sucesso",
+  });
+}
+
 export async function list(_req: Request, res: Response) {
   const rows = await usuarioService.listUsuarios();
   return res.status(200).json(rows);

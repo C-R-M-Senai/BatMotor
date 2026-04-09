@@ -4,6 +4,7 @@ import { downloadXlsx } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchMaterials, fetchMovements } from "@/api";
+import { usePermissions } from "@/context/PermissionsContext";
 
 /**
  * Tela exclusiva /estoque — movimentação e níveis (estável / crítico etc.).
@@ -83,6 +84,7 @@ function buildStockRows(materials, movements) {
 }
 
 function MaterialsPage() {
+  const { canManageInventory } = usePermissions();
   const [rows, setRows] = useState([]);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [page, setPage] = useState(1);
@@ -154,6 +156,7 @@ function MaterialsPage() {
   }, [page, totalPages]);
 
   const exportMaterialsPdf = async () => {
+    if (!canManageInventory) return;
     if (!rows.length) {
       setFeedback({ text: "Não há itens no estoque para exportar.", kind: "info" });
       return;
@@ -218,6 +221,7 @@ function MaterialsPage() {
   };
 
   const exportMaterialsXlsx = async () => {
+    if (!canManageInventory) return;
     if (!rows.length) {
       setFeedback({ text: "Não há dados para exportar.", kind: "info" });
       return;
@@ -300,24 +304,28 @@ function MaterialsPage() {
             <i className="ri-refresh-line me-1" aria-hidden />
             Atualizar
           </button>
-          <button
-            type="button"
-            className="btn products-inventory-page__btn-outline"
-            onClick={exportMaterialsPdf}
-            title="Baixar PDF com movimentação e níveis de estoque"
-          >
-            <i className="ri-file-pdf-line me-1" aria-hidden />
-            PDF
-          </button>
-          <button
-            type="button"
-            className="btn products-inventory-page__btn-outline"
-            onClick={exportMaterialsXlsx}
-            title="Baixar Excel com níveis de estoque"
-          >
-            <i className="ri-file-excel-2-line me-1" aria-hidden />
-            Excel
-          </button>
+          {canManageInventory ? (
+            <>
+              <button
+                type="button"
+                className="btn products-inventory-page__btn-outline"
+                onClick={exportMaterialsPdf}
+                title="Baixar PDF com movimentação e níveis de estoque"
+              >
+                <i className="ri-file-pdf-line me-1" aria-hidden />
+                PDF
+              </button>
+              <button
+                type="button"
+                className="btn products-inventory-page__btn-outline"
+                onClick={exportMaterialsXlsx}
+                title="Baixar Excel com níveis de estoque"
+              >
+                <i className="ri-file-excel-2-line me-1" aria-hidden />
+                Excel
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
 

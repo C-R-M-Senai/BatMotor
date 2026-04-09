@@ -239,7 +239,16 @@ export default function ProductsPage() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  useEffect(() => {
+    if (!canManageInventory) {
+      setImportOpen(false);
+      setProductModalOpen(false);
+      setEditingProduct(null);
+    }
+  }, [canManageInventory]);
+
   const exportCatalogPdf = async () => {
+    if (!canManageInventory) return;
     if (!rows.length) {
       setFeedback({ text: "Não há produtos para exportar.", kind: "info" });
       return;
@@ -289,6 +298,7 @@ export default function ProductsPage() {
   };
 
   const exportCatalogXlsx = async () => {
+    if (!canManageInventory) return;
     if (!rows.length) {
       setFeedback({ text: "Não há produtos para exportar.", kind: "info" });
       return;
@@ -444,14 +454,18 @@ export default function ProductsPage() {
               Importar
             </button>
           ) : null}
-          <button type="button" className="btn products-catalog-page__btn-outline" onClick={exportCatalogPdf}>
-            <i className="ri-file-pdf-line me-1" aria-hidden />
-            PDF
-          </button>
-          <button type="button" className="btn products-catalog-page__btn-outline" onClick={exportCatalogXlsx}>
-            <i className="ri-file-excel-2-line me-1" aria-hidden />
-            Excel
-          </button>
+          {canManageInventory ? (
+            <button type="button" className="btn products-catalog-page__btn-outline" onClick={exportCatalogPdf}>
+              <i className="ri-file-pdf-line me-1" aria-hidden />
+              PDF
+            </button>
+          ) : null}
+          {canManageInventory ? (
+            <button type="button" className="btn products-catalog-page__btn-outline" onClick={exportCatalogXlsx}>
+              <i className="ri-file-excel-2-line me-1" aria-hidden />
+              Excel
+            </button>
+          ) : null}
           {canManageInventory ? (
             <button type="button" className="btn products-catalog-page__btn-primary" onClick={openNewProduct}>
               <i className="ri-add-line me-1" aria-hidden />

@@ -9,7 +9,7 @@ import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import UsersPage from "./pages/UsersPage";
 import LoginPage from "./pages/auth/LoginPage";
-import { loginRequest } from "@/api";
+import { fetchMinStockAlerts, loginRequest } from "@/api";
 import { ACCOUNT_KIND } from "@/constants/registerRoles";
 import { PermissionsProvider } from "@/context/PermissionsContext";
 import { USER_AVATAR_STORAGE_KEY } from "@/constants/userAvatar";
@@ -77,6 +77,7 @@ function App() {
     () => localStorage.getItem(USER_AVATAR_STORAGE_KEY) || ""
   );
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem("batmotor-email") || "");
+  const [headerAlertCount, setHeaderAlertCount] = useState(0);
 
   const headerPageTitle = useMemo(() => {
     const p = location.pathname;
@@ -197,6 +198,24 @@ function App() {
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setHeaderAlertCount(0);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchMinStockAlerts()
+      .then((rows) => {
+        if (!cancelled) setHeaderAlertCount(Array.isArray(rows) ? rows.length : 0);
+      })
+      .catch(() => {
+        if (!cancelled) setHeaderAlertCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, location.pathname]);
 
   useEffect(() => {
     if (!mobileNavOpen) return undefined;
@@ -417,13 +436,38 @@ function App() {
                             aria-label="Pesquisar no painel"
                           />
                         </div>
-                        <button
-                          type="button"
-                          className="app-header-icon-btn"
-                          aria-label="Notificações"
-                        >
-                          <i className="ri-notification-3-line" aria-hidden />
-                        </button>
+                        <div className="d-flex align-items-center gap-1 flex-shrink-0">
+                          <div className="app-header-icon-slot">
+                            <button
+                              type="button"
+                              className="app-header-icon-btn"
+                              aria-label="Alertas de compras e relatório de estoque"
+                              onClick={() => navigate("/relatorios")}
+                            >
+                              <i className="ri-mail-line" aria-hidden />
+                            </button>
+                            {headerAlertCount > 0 ? (
+                              <span className="app-header-icon-badge" aria-hidden>
+                                {headerAlertCount > 99 ? "99+" : headerAlertCount}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="app-header-icon-slot">
+                            <button
+                              type="button"
+                              className="app-header-icon-btn"
+                              aria-label="Notificações"
+                              onClick={() => navigate("/relatorios")}
+                            >
+                              <i className="ri-notification-3-line" aria-hidden />
+                            </button>
+                            {headerAlertCount > 0 ? (
+                              <span className="app-header-icon-badge" aria-hidden>
+                                {headerAlertCount > 99 ? "99+" : headerAlertCount}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </header>

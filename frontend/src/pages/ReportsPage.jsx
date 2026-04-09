@@ -1,15 +1,24 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useEffect, useMemo, useState } from "react";
-import { fetchMinStockAlerts, fetchStockSummary } from "@/api";
+import { fetchMinStockAlerts, fetchStockSummary, sendLowStockAlertEmail } from "@/api";
+import { usePermissions } from "@/context/PermissionsContext";
 import { downloadXlsxWorkbook } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
+import "../styles/reports-page.css";
+
+function formatInt(n) {
+  return Number(n || 0).toLocaleString("pt-BR");
+}
 
 function ReportsPage() {
+  const { canManageInventory } = usePermissions();
   const [summary, setSummary] = useState({ totalItems: 0, totalStock: 0, byMaterial: [] });
   const [alertCount, setAlertCount] = useState(0);
   const [alertRows, setAlertRows] = useState([]);
   const [search, setSearch] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
+  const [feedback, setFeedback] = useState({ text: "", kind: "" });
 
   useEffect(() => {
     fetchStockSummary()
@@ -32,34 +41,34 @@ function ReportsPage() {
     return cats.size;
   }, [summary.byMaterial]);
 
-  const metrics = useMemo(
+  const kpiMetrics = useMemo(
     () => [
       {
+        key: "itens",
         title: "Itens cadastrados",
-        value: summary.totalItems,
-        subtitle: "Produtos na base",
-        tone: "primary",
+        value: formatInt(summary.totalItems),
+        iconWrapClass: "bm-reports-page__metric-icon-wrap--blue",
         icon: "ri-file-list-3-line"
       },
       {
+        key: "estoque",
         title: "Estoque total",
-        value: summary.totalStock,
-        subtitle: "Soma das quantidades",
-        tone: "success",
+        value: formatInt(summary.totalStock),
+        iconWrapClass: "bm-reports-page__metric-icon-wrap--green",
         icon: "ri-stack-line"
       },
       {
+        key: "categorias",
         title: "Categorias",
-        value: categoryCount,
-        subtitle: "Distintas no relatorio",
-        tone: "warning",
+        value: formatInt(categoryCount),
+        iconWrapClass: "bm-reports-page__metric-icon-wrap--yellow",
         icon: "ri-price-tag-3-line"
       },
       {
-        title: "Alertas de minimo",
-        value: alertCount,
-        subtitle: "Itens abaixo do minimo",
-        tone: "danger",
+        key: "alertas",
+        title: "Alertas de mínimo",
+        value: formatInt(alertCount),
+        iconWrapClass: "bm-reports-page__metric-icon-wrap--red",
         icon: "ri-alert-line"
       }
     ],
@@ -67,214 +76,260 @@ function ReportsPage() {
   );
 
   const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const rows = summary.byMaterial || [];
-    if (!q) return rows;
-    return rows.filter(
-      (item) =>
-        String(item.name || "")
-          .toLowerCase()
-          .includes(q) ||
-        String(item.category || "")
-          .toLowerCase()
-          .includes(q)
-    );
-  }, [summary.byMaterial, search]);
+      const q = search.trim().toLowerCase();
+      const rows = summary.byMaterial || [];
+      if (!q) return rows;
+      return rows.filter(
+        (item) =>
+          String(item.name || "")
+            .toLowerCase()
+            .includes(q) ||
+          String(item.category || "")
+            .toLowerCase()
+            .includes(q)
+      );
+    }, [summary.byMaterial, search]);
 
   const exportPdf = async () => {
     try {
-    const doc = new jsPDF();
-    let y = await addBatmotorPdfHeader(doc, { x: 14, y: 10, maxWidthMm: 52 });
-    doc.setFontSize(11);
-    doc.setTextColor(0, 51, 102);
-    doc.text("Relatório de estoque", 14, y);
-    y += 7;
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Total de itens: ${summary.totalItems}`, 14, y);
-    y += 6;
-    doc.text(`Estoque total: ${summary.totalStock}`, 14, y);
-    y += 6;
-    doc.text(`Alertas abaixo do minimo: ${alertCount}`, 14, y);
-    y += 8;
-    autoTable(doc, {
-      startY: y,
-      head: [["Materia-prima", "Categoria", "Qtd", "Minimo"]],
-      body: (summary.byMaterial || []).map((item) => [
-        item.name,
-        item.category,
-        String(item.quantity),
-        String(item.minStock ?? "—")
-      ])
-    });
-    y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 12 : y + 40;
-    doc.setFontSize(12);
-    doc.text("Itens abaixo do estoque minimo (compras)", 14, y);
-    y += 6;
-    autoTable(doc, {
-      startY: y,
-      head: [["Materia-prima", "Categoria", "Atual", "Minimo", "Deficit"]],
-      body: (alertRows || []).map((a) => [
-        a.name,
-        a.category,
-        String(a.currentStock),
-        String(a.minStock),
-        String(a.deficit != null ? a.deficit : Math.max(0, Number(a.minStock) - Number(a.currentStock)))
-      ])
-    });
-    doc.save(`relatorio-estoque-batmotor-${new Date().toISOString().slice(0, 10)}.pdf`);
+      const doc = new jsPDF();
+      let y = await addBatmotorPdfHeader(doc, { x: 14, y: 10, maxWidthMm: 52 });
+      doc.setFontSize(11);
+      doc.setTextColor(0, 51, 102);
+      doc.text("Relatório de estoque", 14, y);
+      y += 7;
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Total de itens: ${summary.totalItems}`, 14, y);
+      y += 6;
+      doc.text(`Estoque total: ${summary.totalStock}`, 14, y);
+      y += 6;
+      doc.text(`Alertas abaixo do mínimo: ${alertCount}`, 14, y);
+      y += 8;
+      autoTable(doc, {
+        startY: y,
+        head: [["Matéria-prima", "Categoria", "Qtd", "Mínimo"]],
+        body: (summary.byMaterial || []).map((item) => [
+          item.name,
+          item.category,
+          String(item.quantity),
+          String(item.minStock ?? "—")
+        ])
+      });
+      y = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 12 : y + 40;
+      doc.setFontSize(12);
+      doc.text("Itens abaixo do estoque mínimo (compras)", 14, y);
+      y += 6;
+      autoTable(doc, {
+        startY: y,
+        head: [["Matéria-prima", "Categoria", "Atual", "Mínimo", "Déficit"]],
+        body: (alertRows || []).map((a) => [
+          a.name,
+          a.category,
+          String(a.currentStock),
+          String(a.minStock),
+          String(a.deficit != null ? a.deficit : Math.max(0, Number(a.minStock) - Number(a.currentStock)))
+        ])
+      });
+      doc.save(`relatorio-estoque-batmotor-${new Date().toISOString().slice(0, 10)}.pdf`);
+      setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
     } catch (e) {
-      window.alert(e?.message || "Não foi possível gerar o PDF.");
+      setFeedback({ text: e?.message || "Não foi possível gerar o PDF.", kind: "danger" });
     }
   };
 
   const exportXlsx = async () => {
     try {
-    const day = new Date().toISOString().slice(0, 10);
-    await downloadXlsxWorkbook(`relatorio-estoque-batmotor-${day}.xlsx`, [
-      {
-        name: "Resumo",
-        columns: {
-          name: "Materia-prima",
-          category: "Categoria",
-          quantity: "Quantidade",
-          minStock: "Estoque minimo"
+      const day = new Date().toISOString().slice(0, 10);
+      await downloadXlsxWorkbook(`relatorio-estoque-batmotor-${day}.xlsx`, [
+        {
+          name: "Resumo",
+          columns: {
+            name: "Matéria-prima",
+            category: "Categoria",
+            quantity: "Quantidade",
+            minStock: "Estoque mínimo"
+          },
+          rows: (summary.byMaterial || []).map((item) => ({
+            name: item.name,
+            category: item.category,
+            quantity: item.quantity,
+            minStock: item.minStock
+          }))
         },
-        rows: (summary.byMaterial || []).map((item) => ({
-          name: item.name,
-          category: item.category,
-          quantity: item.quantity,
-          minStock: item.minStock
-        }))
-      },
-      {
-        name: "Alertas_minimo",
-        columns: {
-          name: "Materia-prima",
-          category: "Categoria",
-          currentStock: "Quantidade atual",
-          minStock: "Minimo",
-          deficit: "Deficit"
+        {
+          name: "Alertas_minimo",
+          columns: {
+            name: "Matéria-prima",
+            category: "Categoria",
+            currentStock: "Quantidade atual",
+            minStock: "Mínimo",
+            deficit: "Déficit"
+          },
+          rows: (alertRows || []).map((a) => ({
+            name: a.name,
+            category: a.category,
+            currentStock: a.currentStock,
+            minStock: a.minStock,
+            deficit:
+              a.deficit != null ? a.deficit : Math.max(0, Number(a.minStock) - Number(a.currentStock))
+          }))
         },
-        rows: (alertRows || []).map((a) => ({
-          name: a.name,
-          category: a.category,
-          currentStock: a.currentStock,
-          minStock: a.minStock,
-          deficit:
-            a.deficit != null ? a.deficit : Math.max(0, Number(a.minStock) - Number(a.currentStock))
-        }))
-      },
-      {
-        name: "Indicadores",
-        columns: { k: "Indicador", v: "Valor" },
-        rows: [
-          { k: "Total itens", v: summary.totalItems },
-          { k: "Estoque total", v: summary.totalStock },
-          { k: "Alertas minimos", v: alertCount }
-        ]
-      }
-    ]);
+        {
+          name: "Indicadores",
+          columns: { k: "Indicador", v: "Valor" },
+          rows: [
+            { k: "Total itens", v: summary.totalItems },
+            { k: "Estoque total", v: summary.totalStock },
+            { k: "Alertas mínimos", v: alertCount }
+          ]
+        }
+      ]);
+      setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
     } catch (e) {
-      window.alert(e?.message || "Não foi possível exportar o Excel.");
+      setFeedback({ text: e?.message || "Não foi possível exportar o Excel.", kind: "danger" });
+    }
+  };
+
+  const handleEnviarAlertaCompras = async () => {
+    setFeedback({ text: "", kind: "" });
+    setEmailSending(true);
+    try {
+      const data = await sendLowStockAlertEmail();
+      setFeedback({
+        text: data?.message
+          ? `${data.message} (${data.total_alertas ?? 0} alerta(s).)`
+          : "E-mail enviado.",
+        kind: "success"
+      });
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Não foi possível enviar o e-mail. Configure SMTP no servidor.";
+      setFeedback({ text: msg, kind: "danger" });
+    } finally {
+      setEmailSending(false);
     }
   };
 
   return (
-    <div className="inventory-page">
-      <header className="inventory-page__hero">
-        <div>
-          <p className="inventory-page__eyebrow">Analiticos</p>
-          <h4 className="inventory-page__title">Relatorios de estoque</h4>
-          <p className="inventory-page__subtitle">
-            Exportacao em PDF e Excel (XLSX): estoque por materia-prima, indicadores e alertas abaixo do minimo.
-          </p>
-        </div>
-        <div className="d-flex flex-column align-items-end gap-2 flex-shrink-0">
-          <div className="d-flex flex-wrap gap-2 justify-content-end">
-            <button type="button" className="btn btn-outline-primary" onClick={exportXlsx}>
-              <i className="ri-file-excel-2-line me-1" aria-hidden />
-              Baixar Excel
-            </button>
-            <button type="button" className="btn btn-primary" onClick={exportPdf}>
-              <i className="ri-file-pdf-line me-1" aria-hidden />
-              Baixar PDF
-            </button>
-          </div>
-          <div className="inventory-page__hero-tag inventory-page__hero-tag--accent">
-            <i className="ri-file-chart-line" aria-hidden />
-            <span>Resumo por materia-prima</span>
-          </div>
-        </div>
-      </header>
-
-      <section className="row g-3 mb-3">
-        {metrics.map((metric) => (
-          <div key={metric.title} className="col-xxl-3 col-sm-6 col-12">
-            <article className={`inventory-stat inventory-stat--${metric.tone}`}>
-              <div className="inventory-stat__icon">
-                <i className={metric.icon} aria-hidden />
+    <div className="bm-reports-page bm-reports-page--kpis">
+      <section className="bm-reports-page__kpis bm-kpis-row row g-4 gy-4 mb-4">
+        {kpiMetrics.map((m) => (
+          <div key={m.key} className="col-12 col-sm-6 col-xl-6 dashboard-kpi-col">
+            <article className="bm-reports-page__metric">
+              <div className="bm-reports-page__metric-body">
+                <span className="bm-reports-page__metric-label">{m.title}</span>
+                <strong className="bm-reports-page__metric-value">{m.value}</strong>
               </div>
-              <div>
-                <span className="inventory-stat__label">{metric.title}</span>
-                <strong className="inventory-stat__value">{metric.value}</strong>
-                <small className="inventory-stat__note">{metric.subtitle}</small>
+              <div className={`bm-reports-page__metric-icon-wrap ${m.iconWrapClass}`} aria-hidden>
+                <i className={m.icon} />
               </div>
             </article>
           </div>
         ))}
       </section>
 
-      <section className="card inventory-toolbar mb-3">
-        <div className="inventory-toolbar__row inventory-toolbar__row--reports">
-          <div className="inventory-toolbar__search">
-            <i className="ri-search-line" aria-hidden />
-            <input
-              type="search"
-              className="form-control"
-              placeholder="Pesquisar por nome ou categoria na tabela"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Filtrar tabela de relatorio"
-            />
-          </div>
+      <div className="bm-reports-page__toolbar">
+        <div>
+          <h2 className="bm-reports-page__title">Relatórios de estoque</h2>
+          <p className="bm-reports-page__subtitle">
+            Resumo por matéria-prima e alertas abaixo do mínimo. Exportação e e-mail de compras apenas para gerência e
+            administração.
+          </p>
         </div>
-      </section>
+        <div className="bm-reports-page__actions">
+          {canManageInventory ? (
+            <button
+              type="button"
+              className="btn bm-reports-page__btn-outline"
+              onClick={() => void handleEnviarAlertaCompras()}
+              disabled={emailSending}
+            >
+              <i className="ri-mail-send-line me-1" aria-hidden />
+              {emailSending ? "Enviando..." : "Alerta e-mail (compras)"}
+            </button>
+          ) : null}
+          {canManageInventory ? (
+            <>
+              <button type="button" className="btn bm-reports-page__btn-outline" onClick={() => void exportXlsx()}>
+                <i className="ri-file-excel-2-line me-1" aria-hidden />
+                Excel
+              </button>
+              <button type="button" className="btn bm-reports-page__btn-primary" onClick={() => void exportPdf()}>
+                <i className="ri-file-pdf-line me-1" aria-hidden />
+                PDF
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
 
-      <section className="card inventory-table-card">
-        <div className="inventory-table-card__head">
+      {feedback.text ? (
+        <div
+          className={`bm-reports-page__alert bm-reports-page__alert--${feedback.kind === "success" ? "success" : feedback.kind === "danger" ? "danger" : "info"} mb-3`}
+          role="status"
+        >
+          {feedback.text}
+        </div>
+      ) : null}
+
+      <div className="bm-reports-page__search-card">
+        <div className="bm-reports-page__search">
+          <i className="ri-search-line" aria-hidden />
+          <input
+            type="search"
+            className="form-control"
+            placeholder="Pesquisar por nome ou categoria na tabela"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Filtrar tabela de relatório"
+          />
+        </div>
+      </div>
+
+      <section className="card bm-reports-page__table-card border-0">
+        <div className="bm-reports-page__table-head">
           <div>
-            <h5 className="card-title mb-1">Detalhamento por materia-prima</h5>
-            <p className="inventory-table-card__desc mb-0">
-              {filteredRows.length} registro(s) — incluidos nos arquivos PDF e Excel.
+            <h3 className="bm-reports-page__table-heading">Detalhamento por matéria-prima</h3>
+            <p className="bm-reports-page__table-desc mb-0">
+              {filteredRows.length} registro(s) {canManageInventory ? "— incluídos nos PDF e Excel." : "— somente consulta."}
             </p>
           </div>
-          <span className="inventory-table-card__badge">Atualizado agora</span>
+          <span className="bm-reports-page__badge">Atualizado agora</span>
         </div>
-
         <div className="table-responsive">
-          <table className="table align-middle mb-0 inventory-table">
+          <table className="table align-middle mb-0 bm-reports-page__data-table">
             <thead>
               <tr>
-                <th scope="col">Materia-prima</th>
+                <th scope="col">Matéria-prima</th>
                 <th scope="col">Categoria</th>
                 <th scope="col" className="text-end">
                   Quantidade
+                </th>
+                <th scope="col" className="text-end">
+                  Mínimo
                 </th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="inventory-table__empty text-center py-4">
-                    Nenhum registro encontrado para o filtro atual.
+                  <td colSpan={4}>
+                    <div className="bm-reports-page__empty">Nenhum registro encontrado para o filtro atual.</div>
                   </td>
                 </tr>
               ) : (
                 filteredRows.map((item) => (
                   <tr key={item.id ?? `${item.name}-${item.category}`}>
-                    <td className="inventory-table__primary">{item.name}</td>
-                    <td className="inventory-table__secondary">{item.category}</td>
-                    <td className="text-end">{item.quantity}</td>
+                    <td>
+                      <span className="bm-reports-page__cell-name">{item.name}</span>
+                    </td>
+                    <td className="bm-reports-page__cell-muted">{item.category}</td>
+                    <td className="text-end bm-reports-page__cell-mono">{formatInt(item.quantity)}</td>
+                    <td className="text-end bm-reports-page__cell-mono">
+                      {item.minStock != null ? formatInt(item.minStock) : "—"}
+                    </td>
                   </tr>
                 ))
               )}
@@ -282,6 +337,53 @@ function ReportsPage() {
           </table>
         </div>
       </section>
+
+      {alertRows.length > 0 ? (
+        <section className="card bm-reports-page__table-card border-0 mt-3">
+          <div className="bm-reports-page__table-head">
+            <div>
+              <h3 className="bm-reports-page__table-heading">Alertas — estoque abaixo do mínimo</h3>
+              <p className="bm-reports-page__table-desc mb-0">Itens que exigem atenção da compras.</p>
+            </div>
+          </div>
+          <div className="table-responsive">
+            <table className="table align-middle mb-0 bm-reports-page__data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Matéria-prima</th>
+                  <th scope="col">Categoria</th>
+                  <th scope="col" className="text-end">
+                    Atual
+                  </th>
+                  <th scope="col" className="text-end">
+                    Mínimo
+                  </th>
+                  <th scope="col" className="text-end">
+                    Déficit
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {alertRows.map((a) => (
+                  <tr key={a.id ?? a.materia_prima_id ?? `${a.name}-alert`}>
+                    <td>
+                      <span className="bm-reports-page__cell-name">{a.name}</span>
+                    </td>
+                    <td className="bm-reports-page__cell-muted">{a.category}</td>
+                    <td className="text-end bm-reports-page__cell-mono">{formatInt(a.currentStock)}</td>
+                    <td className="text-end bm-reports-page__cell-mono">{formatInt(a.minStock)}</td>
+                    <td className="text-end bm-reports-page__cell-mono">
+                      {formatInt(
+                        a.deficit != null ? a.deficit : Math.max(0, Number(a.minStock) - Number(a.currentStock))
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

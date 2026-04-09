@@ -50,6 +50,7 @@ export function registerRoutes(app: Express): void {
   r.use(authenticate);
 
   /* -------- Usuários: gestão de contas (cadastro feito pela equipe, não pelo login público) -------- */
+  r.patch("/users/me", asyncHandler(usuarioController.updateMe));
   r.get("/users", adminOuGerenteDb, asyncHandler(usuarioController.list));
   r.get("/users/:id", asyncHandler(usuarioController.getById));
   r.post("/users", adminOnlyDb, asyncHandler(usuarioController.create));
@@ -192,6 +193,16 @@ export function registerRoutes(app: Express): void {
   r.get(
     "/relatorios/estoque-baixo",
     asyncHandler(relatorioController.estoqueBaixo),
+  );
+  r.post(
+    "/relatorios/estoque-baixo/enviar-email",
+    adminOuGerente,
+    asyncHandler(relatorioController.estoqueBaixoEnviarEmail),
+  );
+  /** Série diária entrada/saída (dados reais de Movimentacao) para gráficos do dashboard. */
+  r.get(
+    "/relatorios/movimentacoes-por-dia",
+    asyncHandler(relatorioController.movimentacoesPorDia),
   );
 
   /* -------- Modelo de exemplo no schema (opcional em produção) -------- */
