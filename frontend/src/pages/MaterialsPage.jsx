@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";
+import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchMaterials, fetchMovements } from "@/api";
 
@@ -152,20 +153,27 @@ function MaterialsPage() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const exportMaterialsPdf = () => {
+  const exportMaterialsPdf = async () => {
     if (!rows.length) {
       setFeedback({ text: "Não há itens no estoque para exportar.", kind: "info" });
       return;
     }
     setFeedback({ text: "", kind: "" });
+    try {
     const doc = new jsPDF({ orientation: "landscape" });
     const now = new Date();
     const ts = now.toLocaleString("pt-BR");
-    doc.setFontSize(14);
-    doc.text("Inventario de estoque - Batmotor", 14, 16);
+    let y = await addBatmotorPdfHeader(doc, { x: 14, y: 10, maxWidthMm: 62 });
+    doc.setFontSize(11);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Inventário de estoque", 14, y);
+    y += 7;
     doc.setFontSize(10);
-    doc.text(`Gerado em: ${ts}`, 14, 23);
-    doc.text(`Registros na tabela: ${rows.length}`, 14, 29);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Gerado em: ${ts}`, 14, y);
+    y += 6;
+    doc.text(`Registros na tabela: ${rows.length}`, 14, y);
+    y += 8;
 
     const body = rows.map((r) => [
       r.name || "—",
@@ -181,7 +189,7 @@ function MaterialsPage() {
     ]);
 
     autoTable(doc, {
-      startY: 34,
+      startY: y,
       head: [
         [
           "Produto",
@@ -204,15 +212,19 @@ function MaterialsPage() {
     const day = now.toISOString().slice(0, 10);
     doc.save(`inventario-estoque-batmotor-${day}.pdf`);
     setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível gerar o PDF.", kind: "danger" });
+    }
   };
 
-  const exportMaterialsXlsx = () => {
+  const exportMaterialsXlsx = async () => {
     if (!rows.length) {
       setFeedback({ text: "Não há dados para exportar.", kind: "info" });
       return;
     }
+    try {
     const day = new Date().toISOString().slice(0, 10);
-    downloadXlsx(
+    await downloadXlsx(
       `inventario-estoque-batmotor-${day}.xlsx`,
       "Estoque",
       {
@@ -235,6 +247,9 @@ function MaterialsPage() {
       }))
     );
     setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível exportar o Excel.", kind: "danger" });
+    }
   };
 
   const pageNumbers = useMemo(() => {

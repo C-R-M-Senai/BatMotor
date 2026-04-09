@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";
+import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SuppliersGlassSelect from "../components/SuppliersGlassSelect";
 import { ExpiryDateField, formatDMY, parseDMY } from "../components/OrangeCalendarPopover";
@@ -292,20 +293,27 @@ function SuppliersPage() {
     }
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
     if (!suppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
     }
     setFeedback({ text: "", kind: "" });
+    try {
     const doc = new jsPDF({ orientation: "landscape" });
     const now = new Date();
     const ts = now.toLocaleString("pt-BR");
-    doc.setFontSize(14);
-    doc.text("Lista de fornecedores - Batmotor", 14, 16);
+    let y = await addBatmotorPdfHeader(doc, { x: 14, y: 10, maxWidthMm: 62 });
+    doc.setFontSize(11);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Lista de fornecedores", 14, y);
+    y += 7;
     doc.setFontSize(10);
-    doc.text(`Gerado em: ${ts}`, 14, 23);
-    doc.text(`Total: ${suppliers.length}`, 14, 29);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Gerado em: ${ts}`, 14, y);
+    y += 6;
+    doc.text(`Total: ${suppliers.length}`, 14, y);
+    y += 8;
 
     const body = suppliers.map((s) => {
       const st = rowStatus(s);
@@ -321,7 +329,7 @@ function SuppliersPage() {
     });
 
     autoTable(doc, {
-      startY: 34,
+      startY: y,
       head: [["Empresa", "ID", "Contato", "E-mail", "Telefone", "Produtos", "Status"]],
       body,
       styles: { fontSize: 8, cellPadding: 2 },
@@ -330,15 +338,19 @@ function SuppliersPage() {
 
     doc.save(`fornecedores-batmotor-${now.toISOString().slice(0, 10)}.pdf`);
     setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível gerar o PDF.", kind: "danger" });
+    }
   };
 
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
     if (!suppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
     }
+    try {
     const day = new Date().toISOString().slice(0, 10);
-    downloadXlsx(
+    await downloadXlsx(
       `fornecedores-batmotor-${day}.xlsx`,
       "Fornecedores",
       {
@@ -364,6 +376,9 @@ function SuppliersPage() {
       })
     );
     setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível exportar o Excel.", kind: "danger" });
+    }
   };
 
   const parseImportText = async (text) => {

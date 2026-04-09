@@ -14,7 +14,7 @@ import { ACCOUNT_KIND } from "@/constants/registerRoles";
 import { PermissionsProvider } from "@/context/PermissionsContext";
 import { USER_AVATAR_STORAGE_KEY } from "@/constants/userAvatar";
 import PillAvatar from "./components/PillAvatar";
-import batmotorLogo from "@/assets/TextoDALOGO (1).svg";
+import batmotorLogo from "@/assets/LOGO.svg";
 
 const BATMOTOR_USER_ID_KEY = "batmotor-user-id";
 
@@ -260,12 +260,19 @@ function App() {
                         aria-label="Fechar menu de navegacao"
                         onClick={() => setMobileNavOpen(false)}
                       >
-                        <img src={batmotorLogo} className="estocae-sidebar-brand__logo-img" alt="" aria-hidden />
+                        <img
+                          src={batmotorLogo}
+                          className="estocae-sidebar-brand__logo-img"
+                          alt=""
+                          aria-hidden
+                          decoding="async"
+                        />
                       </button>
                       <img
                         src={batmotorLogo}
-                        className="estocae-sidebar-brand__mark d-none d-lg-block flex-shrink-0"
+                        className="estocae-sidebar-brand__logo-primary d-none d-lg-block"
                         alt=""
+                        aria-hidden
                         decoding="async"
                       />
                       <div className="estocae-sidebar-brand__titles min-w-0">
@@ -390,7 +397,12 @@ function App() {
                             aria-label="Abrir menu de navegacao"
                             onClick={() => setMobileNavOpen(true)}
                           >
-                            <img src={batmotorLogo} className="estocae-header-logo-sm" alt="" aria-hidden />
+                            <img
+                              src={batmotorLogo}
+                              className="estocae-header-logo-sm"
+                              alt="Batmotor"
+                              decoding="async"
+                            />
                           </button>
                         ) : null}
                         <h1 className="app-header-overview__title">{headerPageTitle}</h1>

@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";
+import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useEffect, useMemo, useState } from "react";
 import { createMovement, fetchMaterials, fetchMovements } from "@/api";
 import { ExpiryDateField, formatDMY, parseDMY } from "../components/OrangeCalendarPopover";
@@ -216,16 +217,22 @@ function MovementsPage() {
     }
   };
 
-  const exportHistoryPdf = () => {
+  const exportHistoryPdf = async () => {
     if (!filteredHistory.length) {
       setFeedback({ text: "Não há registros para exportar.", kind: "info" });
       return;
     }
+    try {
     const doc = new jsPDF({ orientation: "landscape" });
-    doc.setFontSize(14);
-    doc.text("Histórico de movimentações - Batmotor", 14, 16);
+    let y = await addBatmotorPdfHeader(doc, { x: 14, y: 10, maxWidthMm: 62 });
+    doc.setFontSize(11);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Histórico de movimentações", 14, y);
+    y += 7;
     doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 23);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, y);
+    y += 8;
     const body = filteredHistory.map((mv) => {
       const mat = materialsById[mv.materialId];
       const { motivo } = notesParts(mv.notes);
@@ -248,15 +255,19 @@ function MovementsPage() {
     });
     doc.save(`movimentacoes-batmotor-${new Date().toISOString().slice(0, 10)}.pdf`);
     setFeedback({ text: "PDF exportado.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível gerar o PDF.", kind: "danger" });
+    }
   };
 
-  const exportHistoryXlsx = () => {
+  const exportHistoryXlsx = async () => {
     if (!filteredHistory.length) {
       setFeedback({ text: "Não há registros para exportar.", kind: "info" });
       return;
     }
+    try {
     const day = new Date().toISOString().slice(0, 10);
-    downloadXlsx(
+    await downloadXlsx(
       `movimentacoes-batmotor-${day}.xlsx`,
       "Movimentacoes",
       {
@@ -283,6 +294,9 @@ function MovementsPage() {
       })
     );
     setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível exportar o Excel.", kind: "danger" });
+    }
   };
 
   const qtyDisplay = (type, qty) => {

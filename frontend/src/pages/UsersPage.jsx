@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 import { createUser, deleteUser, fetchUsers } from "@/api";
 import { formatCpfDisplay, normalizeCpfDigits } from "@/utils/cpf";
 import { downloadXlsx } from "@/utils/exportXlsx";
+import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import SuppliersGlassSelect from "@/components/SuppliersGlassSelect";
 
 const PAGE_SIZE = 8;
@@ -287,20 +288,27 @@ function UsersPage() {
     }
   };
 
-  const exportUsersPdf = () => {
+  const exportUsersPdf = async () => {
     if (!filteredUsers.length) {
       setFeedback({ text: "Não há usuários na lista atual para exportar.", kind: "info" });
       return;
     }
     setFeedback({ text: "", kind: "" });
+    try {
     const doc = new jsPDF({ orientation: "landscape" });
     const now = new Date();
     const ts = now.toLocaleString("pt-BR");
-    doc.setFontSize(14);
-    doc.text("Usuários do sistema - Batmotor", 14, 16);
+    let y = await addBatmotorPdfHeader(doc, { x: 14, y: 10, maxWidthMm: 62 });
+    doc.setFontSize(11);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Usuários do sistema", 14, y);
+    y += 7;
     doc.setFontSize(10);
-    doc.text(`Gerado em: ${ts}`, 14, 23);
-    doc.text(`Registros (filtro atual): ${filteredUsers.length}`, 14, 29);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Gerado em: ${ts}`, 14, y);
+    y += 6;
+    doc.text(`Registros (filtro atual): ${filteredUsers.length}`, 14, y);
+    y += 8;
 
     const body = filteredUsers.map((u) => [
       u.name || "—",
@@ -311,7 +319,7 @@ function UsersPage() {
     ]);
 
     autoTable(doc, {
-      startY: 34,
+      startY: y,
       head: [["Nome", "E-mail", "CPF", "Tipo de acesso", "Perfil"]],
       body,
       styles: { fontSize: 8, cellPadding: 2 },
@@ -320,15 +328,19 @@ function UsersPage() {
 
     doc.save(`usuarios-batmotor-${now.toISOString().slice(0, 10)}.pdf`);
     setFeedback({ text: "PDF exportado com sucesso.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível gerar o PDF.", kind: "danger" });
+    }
   };
 
-  const exportUsersXlsx = () => {
+  const exportUsersXlsx = async () => {
     if (!filteredUsers.length) {
       setFeedback({ text: "Não há usuários na lista atual para exportar.", kind: "info" });
       return;
     }
+    try {
     const day = new Date().toISOString().slice(0, 10);
-    downloadXlsx(
+    await downloadXlsx(
       `usuarios-batmotor-${day}.xlsx`,
       "Usuarios",
       {
@@ -347,6 +359,9 @@ function UsersPage() {
       }))
     );
     setFeedback({ text: "Planilha Excel exportada.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível exportar o Excel.", kind: "danger" });
+    }
   };
 
   return (

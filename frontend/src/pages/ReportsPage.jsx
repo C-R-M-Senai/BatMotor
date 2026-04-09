@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMinStockAlerts, fetchStockSummary } from "@/api";
 import { downloadXlsxWorkbook } from "@/utils/exportXlsx";
+import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 
 function ReportsPage() {
   const [summary, setSummary] = useState({ totalItems: 0, totalStock: 0, byMaterial: [] });
@@ -80,15 +81,21 @@ function ReportsPage() {
     );
   }, [summary.byMaterial, search]);
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
+    try {
     const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text("Relatorio de Estoque - Batmotor", 14, 16);
+    let y = await addBatmotorPdfHeader(doc, { x: 14, y: 10, maxWidthMm: 52 });
     doc.setFontSize(11);
-    doc.text(`Total de itens: ${summary.totalItems}`, 14, 24);
-    doc.text(`Estoque total: ${summary.totalStock}`, 14, 30);
-    doc.text(`Alertas abaixo do minimo: ${alertCount}`, 14, 36);
-    let y = 42;
+    doc.setTextColor(0, 51, 102);
+    doc.text("Relatório de estoque", 14, y);
+    y += 7;
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Total de itens: ${summary.totalItems}`, 14, y);
+    y += 6;
+    doc.text(`Estoque total: ${summary.totalStock}`, 14, y);
+    y += 6;
+    doc.text(`Alertas abaixo do minimo: ${alertCount}`, 14, y);
+    y += 8;
     autoTable(doc, {
       startY: y,
       head: [["Materia-prima", "Categoria", "Qtd", "Minimo"]],
@@ -115,11 +122,15 @@ function ReportsPage() {
       ])
     });
     doc.save(`relatorio-estoque-batmotor-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (e) {
+      window.alert(e?.message || "Não foi possível gerar o PDF.");
+    }
   };
 
-  const exportXlsx = () => {
+  const exportXlsx = async () => {
+    try {
     const day = new Date().toISOString().slice(0, 10);
-    downloadXlsxWorkbook(`relatorio-estoque-batmotor-${day}.xlsx`, [
+    await downloadXlsxWorkbook(`relatorio-estoque-batmotor-${day}.xlsx`, [
       {
         name: "Resumo",
         columns: {
@@ -163,6 +174,9 @@ function ReportsPage() {
         ]
       }
     ]);
+    } catch (e) {
+      window.alert(e?.message || "Não foi possível exportar o Excel.");
+    }
   };
 
   return (
