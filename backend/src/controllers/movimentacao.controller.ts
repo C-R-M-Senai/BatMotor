@@ -12,7 +12,7 @@ function isTipoValido(t: unknown): t is TipoMovimentacao {
   return (
     t === TipoMovimentacao.ENTRADA ||
     t === TipoMovimentacao.SAIDA ||
-    t === TipoMovimentacao.AJUSTE
+    t === "AJUSTE"
   );
 }
 
