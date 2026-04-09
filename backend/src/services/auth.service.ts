@@ -1,3 +1,15 @@
+/**
+ * =============================================================================
+ * auth.service.ts — CREDENCIAIS → JWT
+ * =============================================================================
+ * Erros comuns: utilizador inexistente, inativo, senha errada — Error com .status
+ * para o errorHandler. Mensagens genéricas onde faz sentido (segurança).
+ *
+ * roles no token: Perfis ligados em UsuarioPerfil. O front normaliza em
+ * batmotorAdapters.normalizeAuthSuccess → accountKind / profileRole.
+ * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import { prisma } from "../lib/prisma";
 import { verifyPassword } from "../utils/password";
 import { signToken } from "../utils/token";

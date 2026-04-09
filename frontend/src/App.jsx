@@ -1,3 +1,36 @@
+/**
+ * =============================================================================
+ * App.jsx — “Cérebro” da SPA Batmotor
+ * =============================================================================
+ * O QUE ESTE FICHEIRO FAZ (ordem de leitura sugerida):
+ *
+ * 1) ROTAS PÚBLICAS vs PROTEGIDAS
+ *    - `/login` : quem não está autenticado vê só o ecrã de login.
+ *    - Demais URLs : envoltório `<ProtectedRoute>` — sem `batmotor-token` no localStorage,
+ *      redirecciona para `/login`.
+ *
+ * 2) ESTADO DE SESSÃO (memória + localStorage)
+ *    - Token JWT, id do utilizador, nome, e-mail, `accountKind` (admin | manager | employee),
+ *      `profileRole` (slug para avatar), foto em base64.
+ *    - `applySessionFromLogin` : chamado após `loginRequest` bem-sucedido; sincroniza estado React
+ *      com o que o backend devolveu.
+ *
+ * 3) PERMISSÕES NA UI
+ *    - `<PermissionsProvider accountKind={...}>` alimenta `usePermissions()` nas páginas
+ *      (ex.: esconder exportação PDF para funcionário).
+ *
+ * 4) LAYOUT AUTENTICADO
+ *    - Sidebar: cada `<NavLink to="...">` é um item de menu (navegação sem recarregar a página).
+ *    - Cabeçalho: título da rota actual, busca decorativa, atalhos para `/relatorios`.
+ *    - `<Routes>`: cada `<Route path="..." element={<.../>} />` associa URL → componente em `pages/`.
+ *
+ * 5) CSS DO TEMPLATE
+ *    - Em `/login` remove-se temporariamente o `main.min.css` do AdminLTE para não conflitar
+ *      com o design da página de autenticação; nas rotas internas o link é recriado.
+ *
+ * Documentação global: `docs/GUIA_PEDAGOGICO_BATMOTOR.md`
+ * =============================================================================
+ */
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import DashboardPage from "./pages/DashboardPage";

@@ -1,3 +1,21 @@
+/**
+ * =============================================================================
+ * authenticate.ts — IDENTIDADE DO PEDIDO HTTP (JWT)
+ * =============================================================================
+ * O Express não “sabe” quem é o utilizador: esse papel é do JWT emitido em
+ * POST /auth/login (ver auth.service + token.signToken).
+ *
+ * DOIS EXPORTÁVEIS:
+ *   • authenticate       — obriga header Authorization: Bearer <token> (ou token no body/query
+ *                          em cenários de teste); se falhar → 401 JSON.
+ *   • optionalAuthenticate — se houver token válido, preenche req.auth; se não houver,
+ *                            segue sem erro (usado em POST /movimentacao para aceitar
+ *                            funcionário sem sessão JWT desde que envie usuario_id).
+ *
+ * req.auth (tipagem em types/express.d.ts): { userId, email, roles }.
+ * Documentação global: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import type { RequestHandler } from "express";
 import { verifyToken } from "../utils/token";
 

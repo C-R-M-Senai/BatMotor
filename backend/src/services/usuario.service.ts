@@ -1,3 +1,19 @@
+/**
+ * ===========================================================================
+ * usuario.service.ts — CRUD de utilizadores e regras de unicidade
+ * ===========================================================================
+ * Chamado pelos controllers de `usuario.controller.ts`.
+ *
+ * Responsabilidades principais:
+ *   - list/find/create/update/delete usuário na tabela `Usuario` (Prisma);
+ *   - validar e-mail e CPF únicos antes de gravar (evita duplicados);
+ *   - opcionalmente vincular Perfil (GERENTE/FUNCIONARIO) na criação;
+ *   - getRolesForUsuario — usado pelo middleware requireRoleFromDb e por PATCH /users/me.
+ *
+ * Segurança: senhas nunca regressam nas respostas; só hash entra em `update` quando `senha` vem no body.
+ * Visão geral: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * ===========================================================================
+ */
 import { Role } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 import { hashPassword } from "../utils/password";

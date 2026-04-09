@@ -1,3 +1,18 @@
+/**
+ * =============================================================================
+ * PermissionsContext — permissões derivadas do “tipo de conta”
+ * =============================================================================
+ * O backend devolve roles (ADMIN / GERENTE / FUNCIONARIO); o login adapter grava em localStorage
+ * um campo simplificado `accountKind`: "admin" | "manager" | "employee".
+ *
+ * Estas flags evitam repetir `if (accountKind === 'admin' || …)` em cada botão:
+ *   canManageInventory — importar/exportar/editar inventário, relatórios sensíveis, etc.
+ *   canManageUsers     — menu “Usuários” e operações equivalentes.
+ *
+ * Funcionário: ambas false para UI restrita; admin e gerente: true.
+ * Context API: Provider envolve a árvore em App.jsx; `usePermissions()` lê o valor em qualquer filho.
+ * =============================================================================
+ */
 import { createContext, useContext, useMemo } from "react";
 import { ACCOUNT_KIND } from "@/constants/registerRoles";
 

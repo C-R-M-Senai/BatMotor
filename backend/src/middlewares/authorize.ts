@@ -1,3 +1,20 @@
+/**
+ * =============================================================================
+ * authorize.ts — AUTORIZAÇÃO POR PAPEL (depois da autenticação)
+ * =============================================================================
+ * Autenticação responde “quem é?”; autorização responde “pode fazer esta acção?”.
+ *
+ * requireRole(A, B, …)     — compara com req.auth.roles (vindas do JWT no momento do login).
+ * requireRoleFromDb(A, B…) — re-lê perfis na tabela UsuarioPerfil (evita 403 injusto se o
+ *                            admin mudou o papel no banco mas o JWT ainda é antigo).
+ *
+ * hasAnyAllowedRole: ADMIN sempre passa (regra de negócio explícita).
+ * mergeJwtAndDbRoles: união de papéis JWT + BD para decisão única.
+ *
+ * Uso típico em routes/index.ts: adminOnly = requireRole(Role.ADMIN).
+ * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import type { RequestHandler } from "express";
 import { Role } from "../generated/prisma/client";
 import { getRolesForUsuario } from "../services/usuario.service";

@@ -1,3 +1,14 @@
+/**
+ * =============================================================================
+ * ReportsPage — Relatórios de stock (matéria-prima) e alertas abaixo do mínimo
+ * =============================================================================
+ * Dados: fetchStockSummary / fetchMinStockAlerts (@/api) agregam matérias-primas (e mock).
+ * Permissões: botões de e-mail, PDF e Excel só se canManageInventory (gerência/admin).
+ * UI: classes `bm-reports-page__*` + folha `styles/reports-page.css` (isolada do resto do CSS).
+ * Exportações: jsPDF + autoTable; Excel via downloadXlsxWorkbook.
+ * Documentação global: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useEffect, useMemo, useState } from "react";

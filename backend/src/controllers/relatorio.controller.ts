@@ -1,3 +1,15 @@
+/**
+ * =============================================================================
+ * relatorio.controller.ts — RELATÓRIOS E ALERTAS (stocks + gráficos)
+ * =============================================================================
+ * estoqueBaixo          → lista itens com quantidade < mínimo (service agrega Prisma).
+ * movimentacoesPorDia   → query ?dias=N para o Recharts no dashboard.
+ * estoqueBaixoEnviarEmail → envia e-mail (SMTP no .env); 503 se não configurado.
+ *
+ * Lógica pesada: relatorio.service.ts, alertaComprasEmail.service.ts, email.service.ts
+ * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import type { Request, Response } from "express";
 import * as alertaEmail from "../services/alertaComprasEmail.service";
 import { isAlertEmailConfigured } from "../services/email.service";

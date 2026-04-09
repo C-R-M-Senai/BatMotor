@@ -1,9 +1,26 @@
+/**
+ * =============================================================================
+ * usuario.controller.ts — USUÁRIOS (CRUD admin + leitura + PATCH /users/me)
+ * =============================================================================
+ * list / getById / create / update / remove — maior parte exige ADMIN na rota
+ * (ver routes/index.ts). getById permite FUNCIONARIO ver apenas o próprio id.
+ *
+ * updateMe (PATCH /users/me):
+ *   - Identifica utilizador por req.auth.userId (já autenticado).
+ *   - Consulta papéis reais no banco via getRolesForUsuario.
+ *   - Se tiver ADMIN ou GERENTE: aceita nome, email, senha opcionais no JSON.
+ *   - Se for apenas FUNCIONARIO: só nome; email/senha no body → 403 (definidos pela empresa).
+ *
+ * Respostas: JSON { usuario?, message? } ou { error } com status HTTP adequado.
+ * Serviço pesado: usuario.service.ts | Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import type { Request, Response } from "express";
 import { Role } from "../generated/prisma/client";
 import * as usuarioService from "../services/usuario.service";
 
 /**
- * Perfil do usuário logado: funcionário só altera nome; gerente/admin podem incluir e-mail e senha.
+ * PATCH /users/me — atualização do próprio cadastro (regras por papel no corpo).
  */
 export async function updateMe(req: Request, res: Response) {
   const auth = req.auth!;

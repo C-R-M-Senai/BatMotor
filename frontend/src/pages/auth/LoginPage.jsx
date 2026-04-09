@@ -1,3 +1,19 @@
+/**
+ * =============================================================================
+ * LoginPage.jsx — AUTENTICAÇÃO NA SPA
+ * =============================================================================
+ * Formulário controlado (email, senha, lembrar e-mail). Submissão chama onLogin
+ * (definido em App.jsx), que por sua vez usa loginRequest de @/api — modo mock
+ * ou HTTP conforme getUseMock().
+ *
+ * mapLoginError: traduz status HTTP / timeout / rede em mensagens em português
+ * para o utilizador (não expor stack traces).
+ *
+ * Classes no documento: login-view no <html>/<body> para o CSS da tela de login
+ * não afetar o resto da app (ver login-blueprint-overrides.css).
+ * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import { useEffect, useState } from "react";
 import telaDeLogin from "@/assets/TelaDeLOGIN.svg";
 import logoMark from "@/assets/LOGO.svg";

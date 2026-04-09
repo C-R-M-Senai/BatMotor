@@ -1,15 +1,19 @@
 /**
- * Registro central de todas as rotas HTTP.
+ * ===========================================================================
+ * routes/index.ts — MAPA CENTRAL DA API (URL → controller + permissões)
+ * ===========================================================================
  *
- * Convenções deste projeto:
- * - `POST /auth/login` é público (sem JWT).
- * - `POST /movimentacao` aceita JWT opcional: sem token, exige `usuario_id` do funcionário no JSON.
- * - Demais endpoints exigem `Authorization: Bearer <token>` (middleware `authenticate`).
- * - Papéis (ADMIN / GERENTE / FUNCIONARIO) são aplicados com `requireRole` (JWT) ou
- *   `requireRoleFromDb` (banco) em rotas onde o token pode ficar defasado após troca de perfil.
+ * CONVENÇÕES:
+ * - POST /auth/login → público (sem cabeçalho Authorization).
+ * - POST /movimentacao → JWT opcional; sem token, o JSON deve trazer usuario_id (fluxo funcionário).
+ * - Router `r` após r.use(authenticate): demais rotas exigem Bearer token válido.
+ * - requireRole → papéis extraídos do JWT; requireRoleFromDb → papéis lidos na base de dados.
+ * - PATCH /users/me → utilizador altera o próprio cadastro (limites por papel no controller).
  *
- * Os caminhos foram mantidos iguais à versão monolítica (`/users`, `/perfil`, …)
- * para não quebrar testes e front-end que já apontavam para essas URLs.
+ * Índice e fluxos detalhados: docs/GUIA_PEDAGOGICO_BATMOTOR.md (raiz do repositório).
+ *
+ * Caminhos alinhados à API monolítica antiga (`/users`, `/perfil`, …) para compatibilidade.
+ * ===========================================================================
  */
 import type { Express } from "express";
 import { Router } from "express";

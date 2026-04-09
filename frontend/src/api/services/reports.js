@@ -1,3 +1,16 @@
+/**
+ * =============================================================================
+ * reports.js — CLIENTE HTTP DOS RELATÓRIOS + fallback
+ * =============================================================================
+ * fetchMinStockAlerts  → GET /relatorios/estoque-baixo; mapeia nomes PT do JSON.
+ * fetchStockSummary    → agrega totais (remoto via materiais ou mock).
+ * fetchMovimentacoesPorDia → série para gráficos.
+ * sendLowStockAlertEmail   → POST /relatorios/estoque-baixo/enviar-email (só gestão).
+ *
+ * Em erro de rede, algumas funções degradam para fetchMaterials() local (UX tolerante).
+ * UI: ReportsPage.jsx | Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay, mockStockSummary } from "../mock/store.js";
 import { stockSummaryFromMaterials } from "../batmotorAdapters.js";

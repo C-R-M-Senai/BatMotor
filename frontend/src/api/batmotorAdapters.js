@@ -1,4 +1,17 @@
-/** Mapeia respostas da API Express/Prisma para o formato usado nas telas (inglês / camelCase). */
+/**
+ * =============================================================================
+ * batmotorAdapters.js — CAMADA ANTI-DESALINHAMENTO (API ↔ React)
+ * =============================================================================
+ * O backend devolve convenções Prisma/PT (ex.: nome, estoque_minimo, usuarioPerfis).
+ * Os componentes e estado local muitas vezes usam inglês curto (name, minStock).
+ * Cada função map* ou normalize* aqui existe para **um só lugar** alterar quando
+ * o contrato JSON mudar — evita espalhar row.nome vs row.name por dezenas de ficheiros.
+ *
+ * pickPrimaryBackendRole: se o utilizador tiver vários perfis, escolhe um “principal”
+ * na ordem ADMIN > GERENTE > FUNCIONARIO (coerente com authorize no backend).
+ * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 
 /** Prioridade para exibição quando o usuário tem vários perfis. */
 export function pickPrimaryBackendRole(roles) {

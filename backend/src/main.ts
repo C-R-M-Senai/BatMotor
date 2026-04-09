@@ -1,13 +1,24 @@
 /**
- * Ponto de entrada do servidor HTTP.
+ * ===========================================================================
+ * BACKEND — PONTO DE ENTRADA DO SERVIDOR HTTP (Node + Express)
+ * ===========================================================================
  *
- * O código que existia antes neste arquivo foi reorganizado em:
- * - `src/routes/` — mapeamento URL → controller (com JWT e papéis).
- * - `src/controllers/` — recebe HTTP, valida entrada básica, chama serviço.
- * - `src/services/` — regras de negócio e chamadas ao Prisma.
- * - `src/middlewares/` — autenticação JWT e autorização por perfil.
+ * FLUXO DE ARRANQUE:
+ *   1) `createApp()` (em `app.ts`) constrói a aplicação Express: CORS, parse de JSON, rotas.
+ *   2) `app.listen(port)` abre o socket TCP e começa a aceitar pedidos.
+ *   3) A porta vem de `config/env.ts` (variável de ambiente, ex.: PORT=3000).
  *
- * O arquivo antigo monolítico foi preservado com o nome `main.legado.ts` para comparação em aula.
+ * ORGANIZAÇÃO DO CÓDIGO (camadas):
+ *   - `routes/index.ts`  — qual URL chama qual controller e que middleware (JWT, papel ADMIN…).
+ *   - `controllers/*`   — traduz HTTP (query/body/params) em chamadas aos services.
+ *   - `services/*`       — regra de negócio + Prisma (`lib/prisma.ts`).
+ *   - `middlewares/*`   — `authenticate` (valida JWT), `authorize` (exige papel).
+ *
+ * DIDÁCTICA: o ficheiro monolítico antigo mantém-se como `main.legado.ts` para comparar
+ * “tudo num arquivo” vs “módulos separados”.
+ *
+ * Documentação expandida para o professor: `docs/GUIA_PEDAGOGICO_BATMOTOR.md` (na raiz do repo).
+ * ===========================================================================
  */
 import { createApp } from "./app";
 import { env } from "./config/env";

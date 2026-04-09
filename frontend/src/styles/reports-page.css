@@ -1,7 +1,12 @@
 /**
- * Relatórios de estoque — estilos exclusivos desta rota.
- * Tudo escopado em .bm-reports-page para não afetar outras telas.
- * Visual alinhado ao padrão products-inventory-page--stock (Estoque).
+ * Relatórios de estoque — folha de estilo APENAS desta funcionalidade.
+ *
+ * - Todas as regras começam com o selector .bm-reports-page… para nunca “vazar”
+ *   para Dashboard, Estoque, etc. (o professor pode mostrar isolamento de CSS por módulo).
+ * - O JSX correspondente está em src/pages/ReportsPage.jsx (importa este ficheiro).
+ * - Contexto geral do projeto: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ *
+ * Visual: alinhado ao módulo Estoque (faixa âmbar no cartão, KPIs claros, tabela legível).
  */
 
 .bm-reports-page {

@@ -1,3 +1,16 @@
+/**
+ * =============================================================================
+ * token.ts — JWT (assinatura e verificação)
+ * =============================================================================
+ * O login bem-sucedido chama signToken({ sub: id, email, roles }).
+ * Cada pedido protegido envia esse token no header; verifyToken reconstrói o payload
+ * ou lança (middleware devolve 401).
+ *
+ * Segredo e expiração vêm de config/env.ts (JWT_SECRET, JWT_EXPIRES_IN).
+ * Nunca coloque senha em claro dentro do JWT — só metadados necessários à autorização.
+ * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
+ * =============================================================================
+ */
 import jwt from "jsonwebtoken";
 import type { Role } from "../generated/prisma/client";
 import { env } from "../config/env";

@@ -1,3 +1,16 @@
+/**
+ * =============================================================================
+ * client.js — Axios + modo mock + sessão
+ * =============================================================================
+ * API_BASE_URL: Vite injeta `import.meta.env.VITE_API_URL` no build; fallback localhost:3000.
+ *
+ * getUseMock(): true → os services NÃO chamam a rede (dados fictícios).
+ * Interceptor request: se existir `batmotor-token` no localStorage, adiciona
+ *   Authorization: Bearer <token>  — cada vírgula e espaço no header segue o padrão HTTP.
+ * Interceptor response: status 401 (não autorizado) limpa sessão e manda o browser para /login,
+ *   exceto quando a própria chamada era o login (para mostrar “credenciais inválidas”).
+ * =============================================================================
+ */
 import axios from "axios";
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
