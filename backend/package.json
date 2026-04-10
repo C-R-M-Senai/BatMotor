@@ -8,7 +8,7 @@
     "build": "prisma generate",
     "start": "tsx src/main.ts",
     "db:seed": "tsx prisma/seed.ts",
-    "release": "node scripts/prisma-release.mjs",
+    "release": "prisma migrate deploy && prisma db seed",
     "verify": "npx tsc --noEmit && npx prisma validate && npm run build"
   },
   "keywords": [],

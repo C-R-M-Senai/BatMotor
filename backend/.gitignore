@@ -2,6 +2,8 @@ node_modules
 
 # Segredos e ambiente local — versione .env.example e docker-compose.yml para o time.
 .env
+# Certificado RDS (descarregado localmente; não versionar)
+global-bundle.pem
 .env.local
 .env.*.local
 
