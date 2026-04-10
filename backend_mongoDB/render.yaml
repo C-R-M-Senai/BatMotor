@@ -1,0 +1,24 @@
+# Blueprint Render — Web Service (Node)
+# No painel: New + Blueprint → cola este ficheiro ou liga o repositório com rootDir = backend_mongoDB
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: batmotor-api-mongodb
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20.18.0"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: CORS_ORIGINS
+        sync: false

@@ -1,0 +1,103 @@
+/**
+ * ===========================================================================
+ * app.ts — FÁBRICA Express (sem escutar porta)
+ * ===========================================================================
+ * Porque existe separado de `main.ts`?
+ *   - Facilita testes: em testes pode criar-se `createApp()` sem subir servidor real.
+ *
+ * ORDEM DOS MIDDLEWARES (importante para o professor):
+ *   1) cors(...)        — navegador só aceita resposta se origem estiver na lista permitida.
+ *   2) express.json(...) — preenche `req.body` em pedidos JSON (com excepção para form/multipart).
+ *   3) urlencoded        — formulários clássicos application/x-www-form-urlencoded.
+ *   4) registerRoutes   — regista todas as rotas da API (ver `routes/index.ts`).
+ *   5) errorHandler     — último middleware: captura erros e devolve JSON consistente.
+ *
+ * Vírgulas em `CORS_ORIGINS` (env): lista de origens do front permitidas, separadas por vírgula.
+ * ===========================================================================
+ */
+import cors from "cors";
+import express from "express";
+import { registerRoutes } from "./routes/index";
+import { errorHandler } from "./middlewares/errorHandler";
+
+const DEFAULT_CORS_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:4173",
+];
+
+/** Junta origens extra (Render, Vercel, etc.) às de desenvolvimento — não perdes o localhost. */
+function parseCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS?.trim();
+  const extra = raw
+    ? raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  return [...new Set([...DEFAULT_CORS_ORIGINS, ...extra])];
+}
+
+/**
+ * Fábrica da aplicação Express (sem subir a porta).
+ * Separamos de `main.ts` para facilitar testes futuros e leitura didática.
+ */
+export function createApp() {
+  const app = express();
+
+  /** Render / proxies — evita avisos com `X-Forwarded-*` em produção. */
+  if (process.env.NODE_ENV === "production" || process.env.RENDER) {
+    app.set("trust proxy", 1);
+  }
+
+  const allowedOrigins = parseCorsOrigins();
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    }),
+  );
+
+  /**
+   * JSON: por padrão o Express só faz parse com `Content-Type: application/json`.
+   * Postman/cURL às vezes mandam o body JSON sem esse header (ou como text/plain) —
+   * aí `req.body` fica vazio e o middleware de JWT acha que “falta token”.
+   *
+   * Só NÃO tratamos como JSON quando é claramente form ou multipart (aí o parser abaixo lê).
+   */
+  app.use(
+    express.json({
+      type: (req) => {
+        const ct = (req.headers["content-type"] ?? "")
+          .split(";")[0]
+          .trim()
+          .toLowerCase();
+        if (ct === "application/x-www-form-urlencoded") return false;
+        if (ct.startsWith("multipart/")) return false;
+        return true;
+      },
+    }),
+  );
+  app.use(express.urlencoded({ extended: true }));
+
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ ok: true, service: "batmotor-backend-mongodb" });
+  });
+
+  registerRoutes(app);
+
+  app.use(errorHandler);
+  return app;
+}
