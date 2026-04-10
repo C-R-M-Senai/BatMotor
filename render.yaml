@@ -5,6 +5,11 @@
 # O campo rootDir: backend diz ao Render que build/start correm nessa subpasta.
 #
 # Ajuste o nome do serviço (aparece na URL *.onrender.com) e o plano conforme a conta.
+#
+# OBRIGATÓRIO no painel Environment (não versionar segredos no Git):
+#   DATABASE_URL = mysql://USER:PASS@HOST_NA_NUVEM:3306/NOME_BD
+#   — NUNCA localhost, 127.0.0.1 nem porta 3307 (isso é só o Docker no teu PC).
+#   JWT_SECRET, CORS_ORIGINS (URL do front). Opcional: SHADOW_DATABASE_URL (só se o Prisma pedir).
 
 services:
   - type: web
