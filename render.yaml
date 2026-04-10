@@ -4,14 +4,16 @@
 # Este ficheiro deve ficar na RAIZ do Git (monorepo). Não coloque dentro de backend/.
 # O campo rootDir: backend diz ao Render que build/start correm nessa subpasta.
 #
-# Ajuste o nome do serviço / plano conforme a sua conta.
+# Ajuste o nome do serviço (aparece na URL *.onrender.com) e o plano conforme a conta.
 
 services:
   - type: web
+    # Troque o nome se criar um serviço novo no Render (nova URL).
     name: batmotor-api
     runtime: node
     rootDir: backend
-    buildCommand: npm install && npm run build
+    # migrate deploy aplica migrações; db seed cria dados iniciais (admin, perfis, etc.)
+    buildCommand: npm install && npm run build && npm run release
     startCommand: npm start
     envVars:
       - key: NODE_VERSION

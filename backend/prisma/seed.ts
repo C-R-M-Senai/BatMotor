@@ -56,10 +56,11 @@ async function ensureUsuarioDev(input: {
     where: { cpf: input.cpf },
   });
 
+  /* Não repõe senha em utilizador já existente — permite correr seed em cada deploy sem apagar passwords em produção. */
   if (porEmail) {
     return prisma.usuario.update({
       where: { id: porEmail.id },
-      data: { nome: input.nome, senha: senhaHash, ativo: true },
+      data: { nome: input.nome, ativo: true },
     });
   }
   if (porCpf) {
@@ -68,7 +69,6 @@ async function ensureUsuarioDev(input: {
       data: {
         email: input.email,
         nome: input.nome,
-        senha: senhaHash,
         ativo: true,
       },
     });

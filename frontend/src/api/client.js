@@ -13,7 +13,18 @@
  */
 import axios from "axios";
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const FALLBACK_API = "http://localhost:3000";
+const rawUrl = import.meta.env.VITE_API_URL;
+const trimmed =
+  typeof rawUrl === "string" && rawUrl.trim() ? rawUrl.trim().replace(/\/+$/, "") : "";
+export const API_BASE_URL = trimmed || FALLBACK_API;
+
+if (import.meta.env.PROD && API_BASE_URL === FALLBACK_API) {
+  console.warn(
+    "[BatMotor] VITE_API_URL não está definida no build de produção; a usar localhost. " +
+      "Defina VITE_API_URL no painel do host (ou em .env.production) com a URL HTTPS da API."
+  );
+}
 
 const API_MODE_STORAGE_KEY = "batmotor-api-mode";
 
