@@ -1,6 +1,16 @@
 /// <reference types="node" />
 
-import "dotenv/config";
+/**
+ * Carrega sempre `backend/.env`, mesmo que o comando seja corrido na raiz do monorepo
+ * (`npx prisma ...` sem `cd backend`). Evita P1001 por `DATABASE_URL` errado/ausente.
+ */
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+
+const backendRoot = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(backendRoot, ".env") });
+
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
