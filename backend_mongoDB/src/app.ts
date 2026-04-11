@@ -25,6 +25,8 @@ const DEFAULT_CORS_ORIGINS = [
   "http://localhost:4173",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:4173",
+  "http://[::1]:5173",
+  "http://[::1]:4173",
 ];
 
 /** Junta origens extra (Render, Vercel, etc.) às de desenvolvimento — não perdes o localhost. */
@@ -37,6 +39,18 @@ function parseCorsOrigins(): string[] {
         .filter(Boolean)
     : [];
   return [...new Set([...DEFAULT_CORS_ORIGINS, ...extra])];
+}
+
+/** Qualquer porta Vite/Web (5173, 5174, …) em HTTP — evita preflight a falhar por origem fora da lista. */
+function isLocalHttpDevOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin);
+    if (u.protocol !== "http:") return false;
+    const h = u.hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -54,19 +68,26 @@ export function createApp() {
   const allowedOrigins = parseCorsOrigins();
   app.use(
     cors({
+      /**
+       * Função + `callback(null, true)`: o `cors` reflecte o `Origin` do pedido nos cabeçalhos.
+       * Com `origin: [array]` e origem não listada, o pacote faz `next()` no OPTIONS e o Express
+       * devolve 404 sem CORS — o Chrome mostra “preflight failed / sem ACAO”.
+       */
       origin(origin, callback) {
         if (!origin) {
           callback(null, true);
           return;
         }
-        if (allowedOrigins.includes(origin)) {
+        if (allowedOrigins.includes(origin) || isLocalHttpDevOrigin(origin)) {
           callback(null, true);
           return;
         }
         callback(null, false);
       },
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+      /** Omitir: o `cors` copia `Access-Control-Request-Headers` do preflight (Accept, Authorization, …). */
+      optionsSuccessStatus: 204,
+      maxAge: 86400,
     }),
   );
 

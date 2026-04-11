@@ -24,18 +24,33 @@ const DONUT_COLORS_LEGACY = ["#60a5fa", "#facc15", "#38bdf8", "#34d399", "#eab30
 const CATEGORY_PALETTE = ["#a855f7", "#eab308", "#22c55e", "#3b82f6"];
 
 function normalizeCategories(categoriesData) {
-  const raw = categoriesData?.length
-    ? categoriesData.map((c) => ({ name: c.name, value: Number(c.value) || 0 }))
-    : [
-        { name: "Eletrônicos", value: 40 },
-        { name: "Refratários", value: 20 },
-        { name: "Orgânicos", value: 40 },
-        { name: "Social", value: 20 }
-      ];
-  const total = raw.reduce((s, x) => s + x.value, 0) || 1;
+  const fallback = [
+    { name: "Eletrônicos", value: 40 },
+    { name: "Refratários", value: 20 },
+    { name: "Orgânicos", value: 40 },
+    { name: "Social", value: 20 }
+  ];
+  if (!categoriesData?.length) {
+    const total = fallback.reduce((s, x) => s + x.value, 0) || 1;
+    return fallback.map((x) => ({
+      ...x,
+      pct: Math.round((x.value / total) * 100)
+    }));
+  }
+  const raw = categoriesData
+    .map((c) => {
+      const v = Number(c?.value);
+      const value = Number.isFinite(v) ? Math.max(0, v) : 0;
+      const name =
+        c?.name != null && String(c.name).trim() ? String(c.name).trim() : "Sem categoria";
+      return { name, value };
+    })
+    .filter((c) => c.value > 0);
+  const total = raw.reduce((s, x) => s + x.value, 0);
+  if (total === 0) return [];
   return raw.map((x) => ({
     ...x,
-    pct: Math.max(1, Math.round((x.value / total) * 100))
+    pct: Math.max(0, Math.min(100, Math.round((x.value / total) * 100)))
   }));
 }
 
@@ -135,9 +150,11 @@ function StockControlChart({ summary }) {
   );
 }
 
-function CategoriesCard({ categoriesData }) {
+function CategoriesCard({ categoriesData, categoriesFootnote = "" }) {
   const normalized = useMemo(() => normalizeCategories(categoriesData), [categoriesData]);
   const pieData = normalized.map((x) => ({ name: x.name, value: x.value, pct: x.pct }));
+  const padAngle = pieData.length > 1 ? 2 : 0;
+  const tooltipUnit = categoriesFootnote ? "itens" : "un.";
 
   return (
     <div className="card mb-0 dashboard-panel dashboard-panel--light h-100 dashboard-categories-card">
@@ -145,33 +162,44 @@ function CategoriesCard({ categoriesData }) {
         <h5 className="card-title mb-0 dashboard-panel__title-flat">Categorias</h5>
       </div>
       <div className="card-body d-flex flex-column">
+        {categoriesFootnote ? (
+          <p className="small text-muted mb-2 mb-xl-3">{categoriesFootnote}</p>
+        ) : null}
         <div className="chart-height chart-height--categories">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="48%"
-                innerRadius={58}
-                outerRadius={88}
-                paddingAngle={2}
-              >
-                {pieData.map((_, index) => (
-                  <Cell key={index} fill={CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value, name) => [`${value} un.`, name]}
-                contentStyle={{
-                  borderRadius: 10,
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 4px 12px rgba(15,39,68,0.08)"
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          {pieData.length === 0 ? (
+            <div className="d-flex align-items-center justify-content-center h-100 text-muted small px-3 text-center">
+              Sem dados para o gráfico. Cadastre matérias-primas com categoria e stock em «Produtos».
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="48%"
+                  innerRadius={58}
+                  outerRadius={88}
+                  paddingAngle={padAngle}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  {pieData.map((_, index) => (
+                    <Cell key={`${pieData[index]?.name}-${index}`} fill={CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, name) => [`${value} ${tooltipUnit}`, name]}
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 4px 12px rgba(15,39,68,0.08)"
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
         <ul className="dashboard-categories-legend list-unstyled mb-0 mt-2">
           {pieData.map((row, index) => (
@@ -251,7 +279,12 @@ function EntradaSaidaAlmoxarifadoCard({ serie }) {
   );
 }
 
-function DashboardChartsSection({ categoriesData, summary, movimentacoesSerie = [] }) {
+function DashboardChartsSection({
+  categoriesData,
+  categoriesFootnote = "",
+  summary,
+  movimentacoesSerie = []
+}) {
   return (
     <>
       <div className="row gx-4 gy-4 align-items-stretch dashboard-row--stock-layout">
@@ -259,7 +292,7 @@ function DashboardChartsSection({ categoriesData, summary, movimentacoesSerie = 
           <StockControlChart summary={summary} />
         </div>
         <div className="col-12 col-xl-5 dashboard-charts-categories-col">
-          <CategoriesCard categoriesData={categoriesData} />
+          <CategoriesCard categoriesData={categoriesData} categoriesFootnote={categoriesFootnote} />
         </div>
       </div>
       <div className="row gx-4 gy-4 align-items-stretch mt-1">

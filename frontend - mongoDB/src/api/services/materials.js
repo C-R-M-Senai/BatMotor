@@ -25,14 +25,18 @@ export async function fetchMaterials(params = {}) {
     const term = String(params.search || "").toLowerCase();
     if (!term) return [...mockDb.materials];
     return mockDb.materials.filter(
-      (m) => m.name.toLowerCase().includes(term) || m.category.toLowerCase().includes(term)
+      (m) =>
+        m.name.toLowerCase().includes(term) ||
+        String(m.category ?? "").toLowerCase().includes(term)
     );
   }
   const all = await fetchMaterialsRemote(params);
   const term = String(params.search || "").toLowerCase();
   if (!term) return all;
   return all.filter(
-    (m) => m.name.toLowerCase().includes(term) || m.category.toLowerCase().includes(term)
+    (m) =>
+      m.name.toLowerCase().includes(term) ||
+      String(m.category ?? "").toLowerCase().includes(term)
   );
 }
 

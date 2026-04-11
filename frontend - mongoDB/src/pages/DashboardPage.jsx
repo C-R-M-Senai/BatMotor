@@ -37,13 +37,26 @@ function DashboardPage() {
     load();
   }, []);
 
-  const categoriesData = useMemo(() => {
-    const grouped = summary.byMaterial.reduce((acc, item) => {
-      acc[item.category] = (acc[item.category] || 0) + (Number(item.quantity) || 0);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped).map(([name, value]) => ({ name, value }));
+  const { categoriesData, categoriesFootnote } = useMemo(() => {
+    const rows = summary.byMaterial;
+    if (!rows.length) {
+      return { categoriesData: [], categoriesFootnote: "" };
+    }
+    const byStock = {};
+    const byCount = {};
+    for (const item of rows) {
+      const key = String(item.category ?? "").trim() || "Sem categoria";
+      byStock[key] = (byStock[key] || 0) + (Number(item.quantity) || 0);
+      byCount[key] = (byCount[key] || 0) + 1;
+    }
+    const totalStock = Object.values(byStock).reduce((a, b) => a + b, 0);
+    const useCount = totalStock === 0;
+    const src = useCount ? byCount : byStock;
+    const categoriesData = Object.entries(src).map(([name, value]) => ({ name, value }));
+    const categoriesFootnote = useCount
+      ? "Stock atual zero — gráfico por número de matérias-primas em cada categoria."
+      : "";
+    return { categoriesData, categoriesFootnote };
   }, [summary.byMaterial]);
 
   return (
@@ -54,6 +67,7 @@ function DashboardPage() {
       <section className="dashboard-section dashboard-section--charts-main">
         <DashboardChartsSection
           categoriesData={categoriesData}
+          categoriesFootnote={categoriesFootnote}
           summary={summary}
           movimentacoesSerie={movimentacoesSerie}
         />
