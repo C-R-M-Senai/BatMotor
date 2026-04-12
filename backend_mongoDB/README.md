@@ -36,3 +36,4 @@ Cópia da API do pasta `backend` original, adaptada para **MongoDB** em vez de P
 - Variáveis: `MONGODB_URI`, `JWT_SECRET`, **`CORS_ORIGINS`** = URL HTTPS do front (ex.: `https://xxx.onrender.com`). O servidor **junta** estas origens às de localhost (Vite).
 - Após o primeiro deploy, corre **`npm run db:seed`** (Shell no Render ou local com a mesma `MONGODB_URI`).
 - Guia do front: `../frontend - mongoDB/DEPLOY_RENDER.md`.
+
