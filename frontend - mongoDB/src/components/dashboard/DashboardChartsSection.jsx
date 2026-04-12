@@ -6,6 +6,7 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
+  Label,
   Legend,
   Line,
   LineChart,
@@ -122,7 +123,8 @@ function StockControlChart({ summary }) {
                   border: "1px solid #e2e8f0",
                   boxShadow: "0 4px 12px rgba(15,39,68,0.1)"
                 }}
-                labelStyle={{ color: "#1e293b", fontWeight: 600 }}
+                labelStyle={{ color: "#0f172a", fontWeight: 700 }}
+                itemStyle={{ color: "#334155" }}
               />
               <Line
                 type="monotone"
@@ -155,6 +157,11 @@ function CategoriesCard({ categoriesData, categoriesFootnote = "" }) {
   const pieData = normalized.map((x) => ({ name: x.name, value: x.value, pct: x.pct }));
   const padAngle = pieData.length > 1 ? 2 : 0;
   const tooltipUnit = categoriesFootnote ? "itens" : "un.";
+  const totalUnits = useMemo(() => pieData.reduce((s, p) => s + (Number(p.value) || 0), 0), [pieData]);
+  const hasCategoriesFootnote = Boolean(String(categoriesFootnote || "").trim());
+  const centerSub = hasCategoriesFootnote
+    ? "Total de itens nas categorias"
+    : "Total em stock (unidades)";
 
   return (
     <div className="card mb-0 dashboard-panel dashboard-panel--light h-100 dashboard-categories-card">
@@ -163,11 +170,11 @@ function CategoriesCard({ categoriesData, categoriesFootnote = "" }) {
       </div>
       <div className="card-body d-flex flex-column">
         {categoriesFootnote ? (
-          <p className="small text-muted mb-2 mb-xl-3">{categoriesFootnote}</p>
+          <p className="small dashboard-panel--light-muted-note mb-2 mb-xl-3">{categoriesFootnote}</p>
         ) : null}
         <div className="chart-height chart-height--categories">
           {pieData.length === 0 ? (
-            <div className="d-flex align-items-center justify-content-center h-100 text-muted small px-3 text-center">
+            <div className="d-flex align-items-center justify-content-center h-100 dashboard-chart-empty-msg small px-3 text-center">
               Sem dados para o gráfico. Cadastre matérias-primas com categoria e stock em «Produtos».
             </div>
           ) : (
@@ -182,12 +189,29 @@ function CategoriesCard({ categoriesData, categoriesFootnote = "" }) {
                   innerRadius={58}
                   outerRadius={88}
                   paddingAngle={padAngle}
+                  minAngle={3}
                   startAngle={90}
                   endAngle={-270}
                 >
                   {pieData.map((_, index) => (
                     <Cell key={`${pieData[index]?.name}-${index}`} fill={CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]} />
                   ))}
+                  <Label
+                    content={({ viewBox }) => {
+                      const cx = Number(viewBox?.cx ?? 0);
+                      const cy = Number(viewBox?.cy ?? 0);
+                      return (
+                        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                          <tspan x={cx} y={cy - 8} fontSize={20} fontWeight={800} fill="#0f172a">
+                            {totalUnits}
+                          </tspan>
+                          <tspan x={cx} y={cy + 12} fontSize={11} fontWeight={600} fill="#475569">
+                            {centerSub}
+                          </tspan>
+                        </text>
+                      );
+                    }}
+                  />
                 </Pie>
                 <Tooltip
                   formatter={(value, name) => [`${value} ${tooltipUnit}`, name]}
@@ -196,6 +220,8 @@ function CategoriesCard({ categoriesData, categoriesFootnote = "" }) {
                     border: "1px solid #e2e8f0",
                     boxShadow: "0 4px 12px rgba(15,39,68,0.08)"
                   }}
+                  labelStyle={{ color: "#0f172a", fontWeight: 700 }}
+                  itemStyle={{ color: "#334155" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -231,7 +257,7 @@ function EntradaSaidaAlmoxarifadoCard({ serie }) {
       <div className="card-header dashboard-panel__head">
         <div>
           <h5 className="card-title mb-0 dashboard-panel__title-flat">Entradas e saídas (almoxarifado)</h5>
-          <p className="small text-muted mb-0 mt-1">
+          <p className="small dashboard-panel--light-muted-note mb-0 mt-1">
             Volume diário registrado no sistema — compras (entrada), linha de montagem (saída) e ajustes de
             inventário. Últimos {chartData.length} dias.
           </p>
@@ -239,7 +265,7 @@ function EntradaSaidaAlmoxarifadoCard({ serie }) {
       </div>
       <div className="card-body pt-2">
         {data.length > 0 && !hasMovement ? (
-          <p className="text-muted small mb-2">
+          <p className="dashboard-panel--light-muted-note small mb-2">
             Sem movimentações neste período. Registre entradas e saídas em «Movimentações» para preencher o gráfico.
           </p>
         ) : null}
@@ -266,6 +292,8 @@ function EntradaSaidaAlmoxarifadoCard({ serie }) {
                   border: "1px solid #e2e8f0",
                   boxShadow: "0 4px 12px rgba(15,39,68,0.1)"
                 }}
+                labelStyle={{ color: "#0f172a", fontWeight: 700 }}
+                itemStyle={{ color: "#334155" }}
               />
               <Legend wrapperStyle={{ color: "#334155" }} />
               <Bar dataKey="entrada" name="Entrada" fill="#22c55e" maxBarSize={32} radius={[4, 4, 0, 0]} />

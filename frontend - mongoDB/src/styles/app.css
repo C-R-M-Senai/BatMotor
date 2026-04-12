@@ -26,7 +26,7 @@ body {
   --bm-surface-muted: #f8fafc;
   --bm-border: #e2e8f0;
   --bm-text: #0f2744;
-  --bm-muted: #64748b;
+  --bm-muted: #4b5563;
   --bm-primary: #1d4ed8;
   --bm-primary-hover: #1e40af;
   --bm-primary-soft: #dbeafe;
@@ -2937,7 +2937,7 @@ body {
   display: block;
   margin-top: 0.15rem;
   font-size: 0.78rem;
-  color: rgba(148, 163, 184, 0.88);
+  color: #cbd5e1;
 }
 
 .inventory-stat--primary .inventory-stat__icon {
@@ -4219,6 +4219,31 @@ body {
   color: #0f172a;
 }
 
+/* Texto auxiliar em cartões claros — evita “text-muted” do Bootstrap quase invisível */
+.dashboard-panel--light-muted-note,
+.dashboard-chart-empty-msg {
+  color: #334155 !important;
+  opacity: 1 !important;
+}
+
+.dashboard-panel--light .text-muted,
+.dashboard-page .text-muted,
+.products-catalog-page .text-muted,
+.suppliers-page .text-muted,
+.users-page .text-muted,
+.bm-reports-page .text-muted,
+.movements-estocae .text-muted,
+.app-footer .text-muted {
+  color: #475569 !important;
+  opacity: 1 !important;
+}
+
+/* Estoque / inventário (fundo escuro): contraste para mensagens secundárias */
+.products-inventory-page .text-muted {
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
 .dashboard-panel--light .dashboard-panel__desc,
 .dashboard-panel--light .card-body {
   color: #334155;
@@ -4258,7 +4283,7 @@ body {
 
 .dashboard-panel__desc {
   font-size: 0.84rem;
-  color: rgba(148, 163, 184, 0.88);
+  color: #475569;
 }
 
 .dashboard-panel__btn {
