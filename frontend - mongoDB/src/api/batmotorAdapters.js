@@ -13,6 +13,17 @@
  * =============================================================================
  */
 
+/**
+ * Mongo com `.lean()` devolve `_id`; respostas após `toJSON()` no modelo usam `id`.
+ * Usar sempre isto ao mapear listagens para o React.
+ */
+export function leanId(row) {
+  if (!row || typeof row !== "object") return "";
+  if (row.id != null && String(row.id).trim() !== "") return String(row.id);
+  if (row._id != null && String(row._id).trim() !== "") return String(row._id);
+  return "";
+}
+
 /** Prioridade para exibição quando o usuário tem vários perfis. */
 export function pickPrimaryBackendRole(roles) {
   const r = Array.isArray(roles) ? roles : [];
@@ -47,7 +58,7 @@ export function normalizeAuthSuccess(data) {
   return {
     token: data.token,
     user: {
-      id: u.id,
+      id: leanId(u) || u.id,
       name: u.nome ?? u.name ?? "Usuário",
       email: u.email ?? "",
       accountKind: accountKind || undefined,
@@ -60,7 +71,7 @@ export function normalizeAuthSuccess(data) {
 export function mapMaterialFromApi(row, saldo) {
   const stock = typeof saldo === "number" ? saldo : 0;
   return {
-    id: row.id,
+    id: leanId(row),
     name: row.nome,
     category: row.categoria,
     unit: row.unidade,
@@ -73,8 +84,9 @@ export function mapMaterialFromApi(row, saldo) {
 export function mapSupplierFromApi(row) {
   const phone = row.telefone ?? "";
   const email = row.email ?? "";
+  const id = leanId(row);
   return {
-    id: row.id,
+    id,
     name: row.nome,
     cnpj: row.cnpj ?? "",
     email,
@@ -87,7 +99,7 @@ export function mapSupplierFromApi(row) {
     state: "",
     address: "",
     category: "",
-    code: String(row.id).padStart(4, "0"),
+    code: id || "",
     supplierType: "",
     since: "",
     paymentTerms: "",
@@ -106,10 +118,11 @@ export function mapMovementFromApi(row) {
   let type = "IN";
   if (row.tipo === "SAIDA") type = "OUT";
   else if (row.tipo === "AJUSTE") type = "ADJ";
+  const mid = row.materia_prima_id;
   return {
-    id: row.id,
+    id: leanId(row),
     type,
-    materialId: row.materia_prima_id,
+    materialId: mid != null ? String(mid) : "",
     quantity: row.quantidade,
     notes: row.motivo ?? row.observacao ?? "",
     createdAt: row.data_atual ?? row.created_at,
@@ -121,7 +134,7 @@ export function mapUserFromApi(row) {
   const roles = (row.usuarioPerfis ?? []).map((up) => up.perfil?.role).filter(Boolean);
   const primary = pickPrimaryBackendRole(roles);
   return {
-    id: row.id,
+    id: leanId(row),
     name: row.nome,
     email: row.email,
     cpf: row.cpf,

@@ -129,10 +129,27 @@ function SuppliersPage() {
   const docsInputRef = useRef(null);
 
   const loadSuppliers = useCallback(async () => {
-    const [suppliersData, materialsData] = await Promise.all([fetchSuppliers(), fetchMaterials()]);
-    setSuppliers(suppliersData);
-    setMaterials(materialsData);
+    let suppliersData = [];
+    let materialsData = [];
+    try {
+      suppliersData = await fetchSuppliers();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error ?? err?.message ?? "Não foi possível carregar a lista de fornecedores.";
+      setFeedback({ text: String(msg), kind: "danger" });
+    }
+    try {
+      materialsData = await fetchMaterials();
+    } catch {
+      /* contagens “Produtos” por fornecedor ficam 0; a lista de fornecedores já veio acima */
+    }
+    setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
+    setMaterials(Array.isArray(materialsData) ? materialsData : []);
   }, []);
+
+  useEffect(() => {
+    void loadSuppliers();
+  }, [loadSuppliers]);
 
   /** Lista começa vazia; preenche após salvar/importar/excluir ou quando o backend tiver dados. */
 
@@ -258,9 +275,23 @@ function SuppliersPage() {
 
   const handleSaveFull = async (e) => {
     e.preventDefault();
-    if (!canManageInventory) return;
+    if (!canManageInventory) {
+      setFeedback({
+        text: "Apenas administrador ou gerente pode cadastrar ou editar fornecedores.",
+        kind: "danger"
+      });
+      return;
+    }
     if (!fullForm.name?.trim()) {
       setFeedback({ text: "Informe o nome do fornecedor.", kind: "danger" });
+      return;
+    }
+    const cnpjDigits = String(fullForm.cnpj || "").replace(/\D/g, "");
+    if (cnpjDigits.length !== 14) {
+      setFeedback({
+        text: "Informe um CNPJ válido com 14 dígitos (podes colar com pontos e traços).",
+        kind: "danger"
+      });
       return;
     }
     if (!fullForm.supplierType?.trim()) {
@@ -285,8 +316,14 @@ function SuppliersPage() {
       }
       setFormOpen(false);
       await loadSuppliers();
-    } catch (_err) {
-      setFeedback({ text: "Não foi possível salvar o fornecedor.", kind: "danger" });
+    } catch (err) {
+      const raw = err?.response?.data?.error ?? err?.message ?? "";
+      const str = String(raw);
+      let msg = str || "Não foi possível salvar o fornecedor.";
+      if (/11000|duplicate|E11000/i.test(str) || /dup key/i.test(str)) {
+        msg = "Este CNPJ já está cadastrado no sistema.";
+      }
+      setFeedback({ text: msg, kind: "danger" });
     } finally {
       setIsSaving(false);
     }
@@ -403,9 +440,12 @@ function SuppliersPage() {
       const parts = line.split(/[;,]/).map((p) => p.replace(/^"|"$/g, "").trim());
       const name = parts[0];
       if (!name) continue;
+      const cnpjRaw = parts[1] || "";
+      const cnpjDigits = String(cnpjRaw).replace(/\D/g, "");
+      if (cnpjDigits.length !== 14) continue;
       await createSupplier({
         name,
-        cnpj: parts[1] || "",
+        cnpj: cnpjRaw,
         email: parts[2] || "",
         phone: parts[3] || "",
         status: "pending",
@@ -569,7 +609,7 @@ function SuppliersPage() {
               ) : (
                 <tr>
                   <td colSpan={7}>
-                    <div className="suppliers-data-table__empty py-5 text-center text-muted">
+                    <div className="suppliers-data-table__empty py-5 text-center">
                       Nenhum fornecedor cadastrado.
                     </div>
                   </td>
@@ -738,7 +778,8 @@ function SuppliersPage() {
                       </div>
                       <div className="suppliers-form__field">
                         <label className="suppliers-form__label" htmlFor="sf-cnpj">
-                          CNPJ
+                          CNPJ <span className="text-danger">*</span>{" "}
+                          <span className="suppliers-form__label-hint">14 dígitos — obrigatório para gravar</span>
                         </label>
                         <input
                           id="sf-cnpj"
@@ -1009,13 +1050,13 @@ function SuppliersPage() {
                 <div className="suppliers-form__footer">
                   <button
                     type="button"
-                    className="btn suppliers-form__btn-cancel"
+                    className="suppliers-form__btn-cancel"
                     onClick={() => !isSaving && setFormOpen(false)}
                   >
                     <i className="ri-close-line me-1" aria-hidden />
                     Cancelar
                   </button>
-                  <button type="submit" className="btn suppliers-form__btn-save" disabled={isSaving}>
+                  <button type="submit" className="suppliers-form__btn-save" disabled={isSaving}>
                     <i className="ri-save-line me-1" aria-hidden />
                     {isSaving ? "Salvando..." : "Salvar fornecedor"}
                   </button>

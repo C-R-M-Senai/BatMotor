@@ -62,6 +62,13 @@ const ACCESS_LEVEL_EMPLOYEE_READONLY = [{ value: "FUNCIONARIO", label: "Funcion�
 
 const BATMOTOR_USER_ID_KEY = "batmotor-user-id";
 
+/** MongoDB usa ObjectId em string; `Number(id)` dá NaN e quebrava o perfil. */
+function getStoredBatmotorUserId() {
+  const raw = localStorage.getItem(BATMOTOR_USER_ID_KEY);
+  const s = raw != null ? String(raw).trim() : "";
+  return s || null;
+}
+
 function accountKindToRoleKey(kind) {
   if (kind === ACCOUNT_KIND.admin) return "ADMIN";
   if (kind === ACCOUNT_KIND.manager) return "GERENTE";
@@ -145,6 +152,7 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
 
   const isAdmin = accountKind === ACCOUNT_KIND.admin;
   const isEmployee = accountKind === ACCOUNT_KIND.employee;
+  const isManager = accountKind === ACCOUNT_KIND.manager;
 
   useEffect(() => {
     const { first, rest } = splitName(userName);
@@ -166,8 +174,8 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
     let cancelled = false;
     (async () => {
       try {
-        const uid = Number(localStorage.getItem(BATMOTOR_USER_ID_KEY));
-        if (!Number.isFinite(uid) || uid <= 0) return;
+        const uid = getStoredBatmotorUserId();
+        if (!uid) return;
         const [perfis, userRow] = await Promise.all([fetchPerfis(), fetchUserById(uid)]);
         if (cancelled || !userRow) return;
         setPerfisCatalog(Array.isArray(perfis) ? perfis : []);
@@ -301,8 +309,8 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
         setProfileMessage({ text: "Perfil atualizado (modo demo local).", kind: "success" });
         return;
       }
-      const uid = Number(localStorage.getItem(BATMOTOR_USER_ID_KEY));
-      if (!Number.isFinite(uid) || uid <= 0) {
+      const uid = getStoredBatmotorUserId();
+      if (!uid) {
         setProfileMessage({ text: "Sessão sem ID de usuário. Faça login novamente.", kind: "danger" });
         return;
       }
@@ -326,11 +334,6 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
         setProfileMessage({ text: "Perfil atualizado (modo demo local).", kind: "success" });
         return;
       }
-      const uid = Number(localStorage.getItem(BATMOTOR_USER_ID_KEY));
-      if (!Number.isFinite(uid) || uid <= 0) {
-        setProfileMessage({ text: "Sessão sem ID de usuário. Faça login novamente.", kind: "danger" });
-        return;
-      }
       try {
         await updateUsuarioMe({ nome: displayName });
         onSaveProfile({ displayName, displayEmail: keepEmail, avatarDataUrl });
@@ -342,12 +345,9 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
       return;
     }
 
-    /** Gerente: e-mail, senha opcional, nível só Gerente ou Funcionário (demo). */
+    /** Gerente: nome, sobrenome, foto e nível (demo); e-mail fixo como no servidor. */
     if (getUseMock()) {
-      if (newPassword && newPassword !== confirmPassword) {
-        setProfileMessage({ text: "Senhas não coincidem.", kind: "danger" });
-        return;
-      }
+      const mockEmail = String(userEmail || email).trim();
       if (accessRoleKey === "GERENTE") {
         localStorage.setItem("batmotor-account-kind", "manager");
         localStorage.setItem("batmotor-profile-role", "gerente");
@@ -355,13 +355,13 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
         localStorage.setItem("batmotor-account-kind", "employee");
         localStorage.setItem("batmotor-profile-role", "funcionario");
       }
-      onSaveProfile({ displayName, displayEmail: email.trim(), avatarDataUrl });
+      onSaveProfile({ displayName, displayEmail: mockEmail, avatarDataUrl });
       onSessionRefreshed?.({
         token: localStorage.getItem("batmotor-token") || "mock-token",
         user: {
           id: localStorage.getItem(BATMOTOR_USER_ID_KEY),
           name: displayName,
-          email: email.trim(),
+          email: mockEmail,
           accountKind: accessRoleKey === "GERENTE" ? "manager" : "employee",
           profileRole: accessRoleKey === "GERENTE" ? "gerente" : "funcionario"
         }
@@ -375,13 +375,14 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
       return;
     }
 
-    const uid = Number(localStorage.getItem(BATMOTOR_USER_ID_KEY));
-    if (!Number.isFinite(uid) || uid <= 0) {
+    const uid = getStoredBatmotorUserId();
+    if (!uid) {
       setProfileMessage({ text: "Sessão sem ID de usuário. Faça login novamente.", kind: "danger" });
       return;
     }
-    if (newPassword && newPassword !== confirmPassword) {
-      setProfileMessage({ text: "Senhas não coincidem.", kind: "danger" });
+    const keepEmail = String(userEmail || "").trim();
+    if (!keepEmail) {
+      setProfileMessage({ text: "E-mail da sessão indisponível. Faça login novamente.", kind: "danger" });
       return;
     }
     if (accessRoleKey !== "GERENTE" && accessRoleKey !== "FUNCIONARIO") {
@@ -390,26 +391,17 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
     }
 
     const roleChanged = accessRoleKey !== initialAccessRoleKey;
-    const passwordChanged = Boolean(newPassword);
 
     try {
-      if (!roleChanged && !passwordChanged) {
-        await updateUsuarioMe({
-          nome: displayName,
-          email: email.trim()
-        });
-        onSaveProfile({ displayName, displayEmail: email.trim(), avatarDataUrl });
+      if (!roleChanged) {
+        await updateUsuarioMe({ nome: displayName });
+        onSaveProfile({ displayName, displayEmail: keepEmail, avatarDataUrl });
         setAvatarEdit({ type: "none" });
         setProfileMessage({ text: "Perfil atualizado com sucesso.", kind: "success" });
         return;
       }
 
-      const body = {
-        nome: displayName,
-        email: email.trim()
-      };
-      if (passwordChanged) body.senha = newPassword;
-      await updateUsuarioMe(body);
+      await updateUsuarioMe({ nome: displayName });
 
       const perfis = perfisCatalog.length ? perfisCatalog : await fetchPerfis();
       const alvo = perfis.find((p) => p.role === accessRoleKey);
@@ -423,24 +415,23 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
       const targetRoles = ["ADMIN", "GERENTE", "FUNCIONARIO"];
       const primaryUp = ups.find((up) => targetRoles.includes(up?.perfil?.role));
       if (primaryUp && primaryUp.perfil_id != null) {
-        if (Number(primaryUp.perfil_id) !== Number(alvo.id)) {
+        if (String(primaryUp.perfil_id) !== String(alvo.id)) {
           await updateUsuarioPerfilLink(uid, primaryUp.perfil_id, alvo.id);
         }
       } else {
         await createUsuarioPerfilLink(uid, alvo.id);
       }
 
-      const pwdLogin = newPassword || currentPassword;
-      if (!pwdLogin) {
+      if (!currentPassword) {
         setProfileMessage({
-          text: "Informe a senha atual ou uma nova senha para atualizar a sessão após alterar o nível ou a senha.",
+          text: "Informe a senha atual para confirmar a mudança de nível de acesso e renovar a sessão.",
           kind: "danger"
         });
         return;
       }
-      const result = await loginRequest(email.trim(), pwdLogin);
+      const result = await loginRequest(keepEmail, currentPassword);
       onSessionRefreshed?.(result);
-      onSaveProfile({ displayName, displayEmail: email.trim(), avatarDataUrl });
+      onSaveProfile({ displayName, displayEmail: keepEmail, avatarDataUrl });
       setNewPassword("");
       setConfirmPassword("");
       setCurrentPassword("");
@@ -876,9 +867,9 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
                     id="pf-email"
                     type="email"
                     className="form-control inventory-form__control"
-                    value={isAdmin || isEmployee ? userEmail || email : email}
-                    onChange={(e) => !isAdmin && !isEmployee && setEmail(e.target.value)}
-                    readOnly={isAdmin || isEmployee}
+                    value={isAdmin || isEmployee || isManager ? userEmail || email : email}
+                    onChange={(e) => !isAdmin && !isEmployee && !isManager && setEmail(e.target.value)}
+                    readOnly={isAdmin || isEmployee || isManager}
                     autoComplete="email"
                   />
                   {isAdmin ? (
@@ -892,67 +883,32 @@ function SettingsPage({ userName, userEmail, profileRole, accountKind, userAvata
                       E-mail e senha são definidos pela empresa. Você pode alterar nome, sobrenome e foto do perfil.
                     </p>
                   ) : null}
+                  {isManager ? (
+                    <p className="small text-muted mb-0">
+                      E-mail e senha de login não são alterados por esta tela. Use nome, sobrenome e foto; para mudar o
+                      nível (Gerente/Funcionário), informe a senha atual ao salvar.
+                    </p>
+                  ) : null}
                 </div>
-                {isAdmin || isEmployee ? null : (
-                  <>
-                    <div className="inventory-form__field">
-                      <label className="inventory-form__label" htmlFor="pf-new-pwd">
-                        Nova senha
-                      </label>
-                      <div className="settings-password-wrap">
-                        <input
-                          id="pf-new-pwd"
-                          type={pwdVisible ? "text" : "password"}
-                          className="form-control inventory-form__control"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          autoComplete="new-password"
-                          placeholder="Deixe em branco para não alterar"
-                        />
-                        <button
-                          type="button"
-                          className="settings-password-wrap__toggle"
-                          onClick={() => setPwdVisible((v) => !v)}
-                          tabIndex={-1}
-                          aria-label={pwdVisible ? "Ocultar" : "Mostrar"}
-                        >
-                          <i className={pwdVisible ? "ri-eye-line" : "ri-eye-off-line"} aria-hidden />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="inventory-form__field">
-                      <label className="inventory-form__label" htmlFor="pf-confirm-pwd">
-                        Confirmar nova senha
-                      </label>
-                      <input
-                        id="pf-confirm-pwd"
-                        type={pwdVisible ? "text" : "password"}
-                        className="form-control inventory-form__control"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        autoComplete="new-password"
-                        placeholder="Repita a nova senha"
-                      />
-                    </div>
-                    <div className="inventory-form__field">
-                      <label className="inventory-form__label" htmlFor="pf-current-pwd">
-                        Senha atual
-                      </label>
-                      <input
-                        id="pf-current-pwd"
-                        type="password"
-                        className="form-control inventory-form__control"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        autoComplete="current-password"
-                        placeholder="Obrigatória se alterar nível ou senha (para renovar a sessão)"
-                      />
-                      <p className="small text-muted mb-0">
-                        Ao mudar o nível de acesso ou a senha, informe a senha atual ou defina uma nova senha acima.
-                      </p>
-                    </div>
-                  </>
-                )}
+                {isAdmin || isEmployee ? null : isManager && accessRoleKey !== initialAccessRoleKey ? (
+                  <div className="inventory-form__field">
+                    <label className="inventory-form__label" htmlFor="pf-current-pwd">
+                      Senha atual
+                    </label>
+                    <input
+                      id="pf-current-pwd"
+                      type="password"
+                      className="form-control inventory-form__control"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      autoComplete="current-password"
+                      placeholder="Obrigatória para confirmar a mudança de nível"
+                    />
+                    <p className="small text-muted mb-0">
+                      Necessária para renovar a sessão após alterar entre Gerente e Funcionário.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="inventory-form__field">
                   <label className="inventory-form__label" id="pf-access-label" htmlFor="pf-access">
                     Nível de Acesso

@@ -45,10 +45,13 @@ export async function createSupplier(payload) {
     mockDb.suppliers.unshift(newRow);
     return mockNormalizeSupplier(newRow, 0);
   }
-  const digits = String(payload.cnpj || "").replace(/\D/g, "");
+  const cnpjDigits = String(payload.cnpj || "").replace(/\D/g, "");
+  if (cnpjDigits.length !== 14) {
+    throw new Error("CNPJ deve ter exatamente 14 dígitos.");
+  }
   const body = {
-    nome: payload.name,
-    cnpj: digits.length === 14 ? digits : String(payload.cnpj || "").trim(),
+    nome: String(payload.name || "").trim(),
+    cnpj: cnpjDigits,
     email: payload.email || undefined,
     telefone: (payload.phone || payload.contact || "").replace(/\D/g, "") || undefined
   };

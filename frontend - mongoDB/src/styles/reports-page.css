@@ -134,15 +134,20 @@
   font-weight: 600;
   font-size: 0.875rem;
   padding: 0.5rem 1rem;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-  background: #fff;
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #fff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
 }
 
 .bm-reports-page__btn-outline:hover:not(:disabled) {
-  background: #f8fafc;
-  color: #334155;
-  border-color: #94a3b8;
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155;
+  border-color: #94a3b8 !important;
 }
 
 .bm-reports-page__btn-outline:disabled {
@@ -156,13 +161,18 @@
   font-size: 0.875rem;
   padding: 0.5rem 1.1rem;
   color: #fff !important;
-  background: #1d4ed8;
-  border: none;
+  -webkit-text-fill-color: #fff;
+  background-color: #1d4ed8 !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
 }
 
 .bm-reports-page__btn-primary:hover {
-  background: #1e40af;
+  background-color: #1e40af !important;
   color: #fff !important;
+  -webkit-text-fill-color: #fff;
 }
 
 /* ——— Alertas inline ——— */
