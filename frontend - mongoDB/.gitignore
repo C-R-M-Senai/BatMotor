@@ -13,7 +13,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Ambiente local — versionar só `.env.example`
-.env
+
 .env.local
 .env.*.local
 
