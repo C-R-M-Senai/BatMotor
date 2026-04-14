@@ -119,10 +119,16 @@ export function mapMovementFromApi(row) {
   if (row.tipo === "SAIDA") type = "OUT";
   else if (row.tipo === "AJUSTE") type = "ADJ";
   const mid = row.materia_prima_id;
+  const materialId =
+    mid == null
+      ? ""
+      : typeof mid === "object"
+        ? leanId(mid) || ""
+        : String(mid);
   return {
     id: leanId(row),
     type,
-    materialId: mid != null ? String(mid) : "",
+    materialId,
     quantity: row.quantidade,
     notes: row.motivo ?? row.observacao ?? "",
     createdAt: row.data_atual ?? row.created_at ?? row.createdAt ?? row.updated_at ?? row.updatedAt,

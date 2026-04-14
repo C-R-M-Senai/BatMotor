@@ -108,7 +108,11 @@ export async function createMovimentacao(
   await aplicarEstoque(materiaOid, body.tipo, qtd);
 
   const populated = await Movimentacao.findById(registro._id)
-    .populate({ path: "materia", options: { lean: true } })
+    .populate({
+      path: "materia_prima_id",
+      select: "nome categoria unidade estoque_minimo ativo",
+      options: { lean: true },
+    })
     .populate({
       path: "usuario_id",
       select: "nome email",
@@ -153,7 +157,11 @@ export async function usuarioEhFuncionarioAtivo(
 
 export async function listMovimentacoes() {
   const rows = await Movimentacao.find()
-    .populate({ path: "materia", options: { lean: true } })
+    .populate({
+      path: "materia_prima_id",
+      select: "nome categoria unidade estoque_minimo ativo",
+      options: { lean: true },
+    })
     .populate({
       path: "usuario_id",
       select: "nome email",
@@ -184,7 +192,11 @@ export async function listMovimentacoes() {
 export async function findMovimentacao(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
   const r = await Movimentacao.findById(id)
-    .populate({ path: "materia", options: { lean: true } })
+    .populate({
+      path: "materia_prima_id",
+      select: "nome categoria unidade estoque_minimo ativo",
+      options: { lean: true },
+    })
     .populate({
       path: "usuario_id",
       select: "nome email",
@@ -247,7 +259,11 @@ export async function updateMovimentacao(
     set.usuario_id = new mongoose.Types.ObjectId(data.usuario_id);
   }
   const row = await Movimentacao.findByIdAndUpdate(id, { $set: set }, { new: true })
-    .populate({ path: "materia", options: { lean: true } })
+    .populate({
+      path: "materia_prima_id",
+      select: "nome categoria unidade estoque_minimo ativo",
+      options: { lean: true },
+    })
     .populate({
       path: "usuario_id",
       select: "nome",
