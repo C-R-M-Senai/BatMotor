@@ -108,6 +108,25 @@ body {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  /* main.min.css (AdminLTE) reserva padding-left:270px para sidebar fixa; aqui a sidebar é flex — sem esse padding */
+  margin: 0;
+  padding: 0;
+}
+
+/*
+ * Neutraliza regras globais do template em main.min.css que ainda apontam para
+ * .sidebar-wrapper fixo (.main-container { padding-left: 270px }, .pinned, etc.).
+ * Sem isto fica uma faixa vazia larga à esquerda e o painel parece “empurrado”.
+ */
+#root .page-wrapper .main-container {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#root .page-wrapper.pinned .main-container,
+#root .page-wrapper.toggled .main-container {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Sidebar React: nomes únicos (.app-sidebar-*) evitam colisão com main.min.css do template */
