@@ -1,3 +1,5 @@
+@import "./input.CSS";
+
 /* Base do app: ocupar 100% da viewport (evita “faixa” cinza / layout deslocado por CSS do template) */
 body {
   margin: 0;
