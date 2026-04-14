@@ -2,6 +2,7 @@ import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { formatCpfDisplay, normalizeCpfDigits } from "@/utils/cpf";
 import { mapUserFromApi } from "../batmotorAdapters.js";
+import { toApiError } from "./errors.js";
 
 function sanitizeUserRow(u) {
   return {
@@ -28,13 +29,6 @@ function assertMockCreateUser(payload) {
   }
 }
 
-function apiErrorMessage(err) {
-  const d = err?.response?.data;
-  if (d && typeof d.error === "string") return d.error;
-  if (d && typeof d.message === "string") return d.message;
-  return null;
-}
-
 export async function fetchUsers() {
   if (getUseMock()) {
     await mockDelay();
@@ -45,10 +39,7 @@ export async function fetchUsers() {
     const list = Array.isArray(data) ? data : [];
     return list.map((row) => sanitizeUserRow(mapUserFromApi(row)));
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Não foi possível carregar os usuários.");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Não foi possível carregar os usuários.");
   }
 }
 
@@ -100,10 +91,7 @@ export async function createUser(payload) {
     const { data } = await api.post("/users", body);
     return sanitizeUserRow(mapUserFromApi(data));
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Não foi possível criar o usuário.");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Não foi possível criar o usuário.");
   }
 }
 
@@ -135,9 +123,6 @@ export async function deleteUser(userId) {
     await api.delete(`/users/${userId}`);
     return { ok: true };
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Não foi possível excluir o usuário.");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Não foi possível excluir o usuário.");
   }
 }

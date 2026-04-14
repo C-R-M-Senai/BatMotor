@@ -1,6 +1,7 @@
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { mapMovementFromApi, mapMovementTypeToApi } from "../batmotorAdapters.js";
+import { toApiError } from "./errors.js";
 
 export async function fetchMovements(query = {}) {
   if (getUseMock()) {
@@ -40,13 +41,20 @@ export async function createMovement(payload) {
     return movement;
   }
   const body = {
-    materia_prima_id: Number(payload.materialId),
+    materia_prima_id: String(payload.materialId || "").trim(),
     tipo: mapMovementTypeToApi(payload.type || "IN"),
     quantidade: Number(payload.quantity) || 0
   };
+  if (!body.materia_prima_id) {
+    throw new Error("Selecione um material válido para registrar a movimentação.");
+  }
   const notes = String(payload.notes || "").trim();
   if (notes) body.motivo = notes;
 
-  const { data } = await api.post("/movimentacao", body);
-  return mapMovementFromApi(data);
+  try {
+    const { data } = await api.post("/movimentacao", body);
+    return mapMovementFromApi(data);
+  } catch (e) {
+    throw toApiError(e, "Não foi possível registrar a movimentação.");
+  }
 }

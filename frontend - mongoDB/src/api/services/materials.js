@@ -1,6 +1,7 @@
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { mapMaterialFromApi } from "../batmotorAdapters.js";
+import { toApiError } from "./errors.js";
 
 async function fetchMaterialsRemote(params = {}) {
   const query = {};
@@ -30,14 +31,18 @@ export async function fetchMaterials(params = {}) {
         String(m.category ?? "").toLowerCase().includes(term)
     );
   }
-  const all = await fetchMaterialsRemote(params);
-  const term = String(params.search || "").toLowerCase();
-  if (!term) return all;
-  return all.filter(
-    (m) =>
-      m.name.toLowerCase().includes(term) ||
-      String(m.category ?? "").toLowerCase().includes(term)
-  );
+  try {
+    const all = await fetchMaterialsRemote(params);
+    const term = String(params.search || "").toLowerCase();
+    if (!term) return all;
+    return all.filter(
+      (m) =>
+        m.name.toLowerCase().includes(term) ||
+        String(m.category ?? "").toLowerCase().includes(term)
+    );
+  } catch (e) {
+    throw toApiError(e, "Não foi possível carregar as matérias-primas.");
+  }
 }
 
 export async function createMaterial(payload) {
@@ -63,7 +68,12 @@ export async function createMaterial(payload) {
     estoque_minimo: Number(payload.minStock) || 0,
     ativo: payload.active !== false
   };
-  const { data } = await api.post("/materia-prima", body);
+  let data;
+  try {
+    ({ data } = await api.post("/materia-prima", body));
+  } catch (e) {
+    throw toApiError(e, "Não foi possível cadastrar a matéria-prima.");
+  }
   let saldo = 0;
   try {
     const { data: estoqueRows } = await api.get("/estoque-atual");
@@ -96,7 +106,12 @@ export async function updateMaterial(id, payload) {
     estoque_minimo: Number(payload.minStock) || 0
   };
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
-  const { data } = await api.put(`/materia-prima/${id}`, body);
+  let data;
+  try {
+    ({ data } = await api.put(`/materia-prima/${id}`, body));
+  } catch (e) {
+    throw toApiError(e, "Não foi possível atualizar a matéria-prima.");
+  }
   const updated = data?.materia ?? data;
   let saldo = 0;
   try {
@@ -119,6 +134,10 @@ export async function deleteMaterial(id) {
     mockDb.materials.splice(idx, 1);
     return { removido: true };
   }
-  await api.delete(`/materia-prima/${id}`);
+  try {
+    await api.delete(`/materia-prima/${id}`);
+  } catch (e) {
+    throw toApiError(e, "Não foi possível excluir a matéria-prima.");
+  }
   return { removido: true };
 }

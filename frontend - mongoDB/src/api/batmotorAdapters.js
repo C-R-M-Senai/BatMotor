@@ -125,13 +125,18 @@ export function mapMovementFromApi(row) {
     materialId: mid != null ? String(mid) : "",
     quantity: row.quantidade,
     notes: row.motivo ?? row.observacao ?? "",
-    createdAt: row.data_atual ?? row.created_at,
+    createdAt: row.data_atual ?? row.created_at ?? row.createdAt ?? row.updated_at ?? row.updatedAt,
     raw: row
   };
 }
 
 export function mapUserFromApi(row) {
-  const roles = (row.usuarioPerfis ?? []).map((up) => up.perfil?.role).filter(Boolean);
+  const rolesFromLinks = (row.usuarioPerfis ?? []).map((up) => up.perfil?.role).filter(Boolean);
+  const roles = rolesFromLinks.length
+    ? rolesFromLinks
+    : Array.isArray(row.roles)
+      ? row.roles.filter(Boolean)
+      : [];
   const primary = pickPrimaryBackendRole(roles);
   return {
     id: leanId(row),

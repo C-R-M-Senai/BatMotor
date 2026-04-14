@@ -1,13 +1,7 @@
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { normalizeAuthSuccess } from "../batmotorAdapters.js";
-
-function apiErrorMessage(err) {
-  const d = err?.response?.data;
-  if (d && typeof d.error === "string") return d.error;
-  if (d && typeof d.message === "string") return d.message;
-  return null;
-}
+import { toApiError } from "./errors.js";
 
 function mockRolesForUser(mockUser) {
   if (Array.isArray(mockUser.roles) && mockUser.roles.length) return mockUser.roles;
@@ -44,9 +38,6 @@ export async function loginRequest(email, password) {
     });
     return normalizeAuthSuccess(data);
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Falha no login");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Falha no login.");
   }
 }

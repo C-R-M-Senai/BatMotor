@@ -1,11 +1,5 @@
 import { api, getUseMock } from "../client.js";
-
-function apiErrorMessage(err) {
-  const d = err?.response?.data;
-  if (d && typeof d.error === "string") return d.error;
-  if (d && typeof d.message === "string") return d.message;
-  return null;
-}
+import { toApiError } from "./errors.js";
 
 /** GET /perfil — admin only */
 export async function fetchPerfis() {
@@ -28,10 +22,7 @@ export async function updateUsuarioMe(body) {
     const { data } = await api.patch("/users/me", body);
     return data;
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Não foi possível atualizar o perfil.");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Não foi possível atualizar o perfil.");
   }
 }
 
@@ -42,10 +33,7 @@ export async function updateUsuario(id, body) {
     const { data } = await api.put(`/users/${id}`, body);
     return data;
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Não foi possível atualizar o usuário.");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Não foi possível atualizar o usuário.");
   }
 }
 
@@ -58,10 +46,7 @@ export async function updateUsuarioPerfilLink(usuarioId, perfilIdAntigo, novoPer
     });
     return data;
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Não foi possível atualizar o vínculo de perfil.");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Não foi possível atualizar o vínculo de perfil.");
   }
 }
 
@@ -75,9 +60,6 @@ export async function createUsuarioPerfilLink(usuarioId, perfilId) {
     });
     return data;
   } catch (e) {
-    const msg = apiErrorMessage(e);
-    const err = new Error(msg || e.message || "Não foi possível vincular o perfil.");
-    err.response = e.response;
-    throw err;
+    throw toApiError(e, "Não foi possível vincular o perfil.");
   }
 }

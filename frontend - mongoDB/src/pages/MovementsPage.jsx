@@ -88,20 +88,26 @@ function MovementsPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const responsibleName = () => localStorage.getItem("batmotor-user") || "—";
 
   const loadData = async () => {
-    const [materialsData, movementsData] = await Promise.all([fetchMaterials(), fetchMovements()]);
-    setMaterials(materialsData);
-    setMovements(movementsData);
-    if (materialsData[0]?.id) {
-      setForm((prev) => ({
-        ...prev,
-        materialId: prev.materialId || materialsData[0].id
-      }));
-      const m0 = materialsData[0];
-      setProductQuery(m0?.name || "");
+    setIsLoading(true);
+    try {
+      const [materialsData, movementsData] = await Promise.all([fetchMaterials(), fetchMovements()]);
+      setMaterials(materialsData);
+      setMovements(movementsData);
+      if (materialsData[0]?.id) {
+        setForm((prev) => ({
+          ...prev,
+          materialId: prev.materialId || materialsData[0].id
+        }));
+        const m0 = materialsData[0];
+        setProductQuery(m0?.name || "");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -211,8 +217,8 @@ function MovementsPage() {
       setFeedback({ text: "Movimentação registrada com sucesso.", kind: "success" });
       await loadData();
       resetForm();
-    } catch (_err) {
-      setFeedback({ text: "Falha ao registrar movimentação.", kind: "danger" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Falha ao registrar movimentação.", kind: "danger" });
     } finally {
       setIsSaving(false);
     }
@@ -530,7 +536,15 @@ function MovementsPage() {
               </tr>
             </thead>
             <tbody>
-              {historySlice.length ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8}>
+                    <div className="movements-estocae__empty py-5 text-center text-muted">
+                      Carregando movimentações...
+                    </div>
+                  </td>
+                </tr>
+              ) : historySlice.length ? (
                 historySlice.map((mv) => {
                   const mat = materialsById[mv.materialId];
                   const { motivo } = notesParts(mv.notes);

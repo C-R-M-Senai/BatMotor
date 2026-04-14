@@ -66,12 +66,12 @@ function mapLoginError(err) {
   return msg || "Não foi possível entrar. Tente novamente.";
 }
 
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, initialNotice = "" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [pwdVisible, setPwdVisible] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialNotice);
   const [forgotHint, setForgotHint] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -83,6 +83,10 @@ function LoginPage({ onLogin }) {
       document.body.classList.remove("login-view");
     };
   }, []);
+
+  useEffect(() => {
+    if (initialNotice) setError(initialNotice);
+  }, [initialNotice]);
 
   useEffect(() => {
     try {

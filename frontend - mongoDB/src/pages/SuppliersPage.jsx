@@ -117,6 +117,7 @@ function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingList, setIsLoadingList] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importDragging, setImportDragging] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -129,6 +130,7 @@ function SuppliersPage() {
   const docsInputRef = useRef(null);
 
   const loadSuppliers = useCallback(async () => {
+    setIsLoadingList(true);
     let suppliersData = [];
     let materialsData = [];
     try {
@@ -145,6 +147,7 @@ function SuppliersPage() {
     }
     setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
     setMaterials(Array.isArray(materialsData) ? materialsData : []);
+    setIsLoadingList(false);
   }, []);
 
   useEffect(() => {
@@ -553,7 +556,13 @@ function SuppliersPage() {
               </tr>
             </thead>
             <tbody>
-              {paginatedSuppliers.length ? (
+              {isLoadingList ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="suppliers-data-table__empty py-5 text-center">Carregando fornecedores...</div>
+                  </td>
+                </tr>
+              ) : paginatedSuppliers.length ? (
                 paginatedSuppliers.map((supplier) => {
                   const relatedItems = materialsBySupplier[supplier.id] || 0;
                   const st = rowStatus(supplier);

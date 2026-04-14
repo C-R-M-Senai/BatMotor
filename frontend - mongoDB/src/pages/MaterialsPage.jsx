@@ -88,9 +88,11 @@ function MaterialsPage() {
   const [rows, setRows] = useState([]);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadStock = useCallback(async () => {
     setFeedback({ text: "", kind: "" });
+    setIsLoading(true);
     try {
       const [materials, movements] = await Promise.all([fetchMaterials(), fetchMovements()]);
       setRows(buildStockRows(materials, movements));
@@ -100,6 +102,8 @@ function MaterialsPage() {
         text: err?.message || "Não foi possível carregar o estoque.",
         kind: "danger"
       });
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -300,9 +304,10 @@ function MaterialsPage() {
             className="btn products-inventory-page__btn-outline"
             onClick={() => void loadStock()}
             title="Atualizar níveis a partir do servidor"
+            disabled={isLoading}
           >
             <i className="ri-refresh-line me-1" aria-hidden />
-            Atualizar
+            {isLoading ? "Atualizando..." : "Atualizar"}
           </button>
           {canManageInventory ? (
             <>
@@ -355,7 +360,15 @@ function MaterialsPage() {
               </tr>
             </thead>
             <tbody>
-              {pageSlice.length ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={9}>
+                    <div className="products-data-table__empty py-5 text-center text-muted">
+                      Carregando estoque...
+                    </div>
+                  </td>
+                </tr>
+              ) : pageSlice.length ? (
                 pageSlice.map((r) => (
                   <tr key={r.id}>
                     <td>

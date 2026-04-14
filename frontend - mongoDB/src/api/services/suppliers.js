@@ -2,15 +2,20 @@ import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { mockNormalizeSupplier, mockNextSupplierCode } from "../mock/suppliers.js";
 import { mapSupplierFromApi } from "../batmotorAdapters.js";
+import { toApiError } from "./errors.js";
 
 export async function fetchSuppliers() {
   if (getUseMock()) {
     await mockDelay();
     return mockDb.suppliers.map((s, i) => mockNormalizeSupplier(s, i));
   }
-  const { data } = await api.get("/fornecedores");
-  const list = Array.isArray(data) ? data : [];
-  return list.map(mapSupplierFromApi);
+  try {
+    const { data } = await api.get("/fornecedores");
+    const list = Array.isArray(data) ? data : [];
+    return list.map(mapSupplierFromApi);
+  } catch (e) {
+    throw toApiError(e, "Não foi possível carregar a lista de fornecedores.");
+  }
 }
 
 export async function createSupplier(payload) {
@@ -56,8 +61,12 @@ export async function createSupplier(payload) {
     telefone: (payload.phone || payload.contact || "").replace(/\D/g, "") || undefined
   };
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
-  const { data } = await api.post("/fornecedores", body);
-  return mapSupplierFromApi(data);
+  try {
+    const { data } = await api.post("/fornecedores", body);
+    return mapSupplierFromApi(data);
+  } catch (e) {
+    throw toApiError(e, "Não foi possível cadastrar o fornecedor.");
+  }
 }
 
 export async function updateSupplier(id, payload) {
@@ -79,8 +88,12 @@ export async function updateSupplier(id, payload) {
     body.telefone = String(payload.phone || payload.contact || "").replace(/\D/g, "") || undefined;
   }
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
-  const { data } = await api.put(`/fornecedores/${id}`, body);
-  return mapSupplierFromApi(data);
+  try {
+    const { data } = await api.put(`/fornecedores/${id}`, body);
+    return mapSupplierFromApi(data);
+  } catch (e) {
+    throw toApiError(e, "Não foi possível atualizar o fornecedor.");
+  }
 }
 
 export async function deleteSupplier(id) {
@@ -94,6 +107,10 @@ export async function deleteSupplier(id) {
     });
     return { ok: true };
   }
-  await api.delete(`/fornecedores/${id}`);
+  try {
+    await api.delete(`/fornecedores/${id}`);
+  } catch (e) {
+    throw toApiError(e, "Não foi possível excluir o fornecedor.");
+  }
   return { ok: true };
 }

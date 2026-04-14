@@ -77,6 +77,23 @@ export function getResolvedApiMode() {
   return getUseMock() ? "local" : "remote";
 }
 
+export function clearSessionStorage() {
+  const keys = [
+    "batmotor-token",
+    "batmotor-user",
+    "batmotor-user-id",
+    "batmotor-account-kind",
+    "batmotor-profile-role",
+    "batmotor-email",
+    "batmotor-user-avatar"
+  ];
+  try {
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* ignore */
+  }
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000
@@ -98,10 +115,13 @@ api.interceptors.response.use(
     if (status !== 401) return Promise.reject(err);
     const url = String(err.config?.url || "");
     if (url.includes("auth/login")) return Promise.reject(err);
-    try {
-      localStorage.removeItem("batmotor-token");
-    } catch {
-      /* ignore */
+    clearSessionStorage();
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem("batmotor-session-expired", String(Date.now()));
+      } catch {
+        /* ignore */
+      }
     }
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
       window.location.assign("/login");

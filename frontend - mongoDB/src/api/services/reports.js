@@ -15,6 +15,7 @@ import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay, mockStockSummary } from "../mock/store.js";
 import { stockSummaryFromMaterials } from "../batmotorAdapters.js";
 import { fetchMaterials } from "./materials.js";
+import { toApiError } from "./errors.js";
 
 export async function fetchMinStockAlerts() {
   if (getUseMock()) {
@@ -63,13 +64,17 @@ export async function fetchMovimentacoesPorDia(dias = 14) {
     }));
     return { dias: n, serie };
   }
-  const { data } = await api.get("/relatorios/movimentacoes-por-dia", {
-    params: { dias }
-  });
-  return {
-    dias: data?.dias ?? (Array.isArray(data?.serie) ? data.serie.length : 0),
-    serie: Array.isArray(data?.serie) ? data.serie : []
-  };
+  try {
+    const { data } = await api.get("/relatorios/movimentacoes-por-dia", {
+      params: { dias }
+    });
+    return {
+      dias: data?.dias ?? (Array.isArray(data?.serie) ? data.serie.length : 0),
+      serie: Array.isArray(data?.serie) ? data.serie : []
+    };
+  } catch (e) {
+    throw toApiError(e, "Não foi possível carregar as movimentações do relatório.");
+  }
 }
 
 /** Dispara e-mail de alerta de estoque mínimo (ADMIN/GERENTE). Requer SMTP no backend. */
@@ -78,6 +83,10 @@ export async function sendLowStockAlertEmail() {
     await mockDelay();
     return { message: "Mock: e-mail não enviado.", enviado: false, total_alertas: 0 };
   }
-  const { data } = await api.post("/relatorios/estoque-baixo/enviar-email");
-  return data;
+  try {
+    const { data } = await api.post("/relatorios/estoque-baixo/enviar-email");
+    return data;
+  } catch (e) {
+    throw toApiError(e, "Não foi possível enviar o e-mail de alerta.");
+  }
 }

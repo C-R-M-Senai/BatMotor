@@ -43,6 +43,7 @@ import SettingsPage from "./pages/SettingsPage";
 import UsersPage from "./pages/UsersPage";
 import LoginPage from "./pages/auth/LoginPage";
 import { fetchMinStockAlerts, loginRequest } from "@/api";
+import { clearSessionStorage } from "@/api/client";
 import { ACCOUNT_KIND } from "@/constants/registerRoles";
 import { PermissionsProvider } from "@/context/PermissionsContext";
 import { USER_AVATAR_STORAGE_KEY } from "@/constants/userAvatar";
@@ -111,6 +112,7 @@ function App() {
   );
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem("batmotor-email") || "");
   const [headerAlertCount, setHeaderAlertCount] = useState(0);
+  const [sessionNotice, setSessionNotice] = useState("");
 
   const headerPageTitle = useMemo(() => {
     const p = location.pathname;
@@ -210,13 +212,7 @@ function App() {
         navigate("/");
       },
       logout: () => {
-        localStorage.removeItem("batmotor-token");
-        localStorage.removeItem("batmotor-user");
-        localStorage.removeItem(BATMOTOR_USER_ID_KEY);
-        localStorage.removeItem("batmotor-account-kind");
-        localStorage.removeItem("batmotor-profile-role");
-        localStorage.removeItem("batmotor-email");
-        localStorage.removeItem(USER_AVATAR_STORAGE_KEY);
+        clearSessionStorage();
         setProfileRole("");
         setAccountKind("");
         setUserAvatar("");
@@ -227,6 +223,42 @@ function App() {
     }),
     [applySessionFromLogin, navigate]
   );
+
+  useEffect(() => {
+    const token = localStorage.getItem("batmotor-token");
+    if (!token) {
+      setIsAuthenticated(false);
+      setAccountKind("");
+      return;
+    }
+    setIsAuthenticated(true);
+    setUserName(localStorage.getItem("batmotor-user") || "Usuário");
+    setUserEmail(localStorage.getItem("batmotor-email") || "");
+    setProfileRole(localStorage.getItem("batmotor-profile-role") || "");
+    setAccountKind(localStorage.getItem("batmotor-account-kind") || "");
+    setUserAvatar(localStorage.getItem(USER_AVATAR_STORAGE_KEY) || "");
+  }, []);
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "batmotor-token") {
+        setIsAuthenticated(Boolean(localStorage.getItem("batmotor-token")));
+      }
+      if (e.key === "batmotor-account-kind") {
+        setAccountKind(localStorage.getItem("batmotor-account-kind") || "");
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname !== "/login") return;
+    const mark = sessionStorage.getItem("batmotor-session-expired");
+    if (!mark) return;
+    setSessionNotice("Sua sessão expirou. Faça login novamente.");
+    sessionStorage.removeItem("batmotor-session-expired");
+  }, [location.pathname]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -281,7 +313,11 @@ function App() {
       <Route
         path="/login"
         element={
-          isAuthenticated ? <Navigate to="/" replace /> : <LoginPage onLogin={authActions.login} />
+          isAuthenticated ? (
+            <Navigate to="/" replace />
+          ) : (
+            <LoginPage onLogin={authActions.login} initialNotice={sessionNotice} />
+          )
         }
       />
       <Route path="/cadastro" element={<Navigate to="/login" replace />} />

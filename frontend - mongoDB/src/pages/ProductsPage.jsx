@@ -2,14 +2,21 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePermissions } from "@/context/PermissionsContext";
 import AddProductModal from "../components/AddProductModal";
-import ProductImportModal from "../components/ProductImportModal";
+import {
+  createMaterial,
+  createMovement,
+  deleteMaterial,
+  fetchMaterials,
+  fetchSuppliers,
+  updateMaterial
+} from "@/api";
 
 const PAGE_SIZE = 8;
 
-/** Categorias padrão (referência UI) + fallback quando não houver dados no banco. */
+/** Categorias de apoio para cadastro quando o banco ainda estiver vazio. */
 export const PRODUCT_UI_DEFAULT_CATEGORIES = [
   "Construção",
   "Eletrônicos",
@@ -17,141 +24,6 @@ export const PRODUCT_UI_DEFAULT_CATEGORIES = [
   "Material de Escritório",
   "Têxtil",
   "Beleza"
-];
-
-const DEMO_ROWS = [
-  {
-    id: "p1",
-    name: "Caixa Organizadora",
-    code: "PRD-001",
-    description: "Caixa plástica de 20L com tampa e alças laterais",
-    supplierName: "Distribuidora Alfa",
-    category: "Eletrônicos",
-    salePrice: 48.99,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p2",
-    name: "Smartwatch",
-    code: "PRD-002",
-    description: "Pulseira inteligente com monitor cardíaco",
-    supplierName: "Tech Import",
-    category: "Eletrônicos",
-    salePrice: 299.9,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p3",
-    name: "Kit Pincéis Maquiagem",
-    code: "PRD-003",
-    description: "12 pincéis sintéticos com estojo",
-    supplierName: "Beleza Plus",
-    category: "Beleza",
-    salePrice: 67.5,
-    active: false,
-    outOfStock: false
-  },
-  {
-    id: "p4",
-    name: "Papel A4 Resma",
-    code: "PRD-004",
-    description: "Resma 500 folhas 75g",
-    supplierName: "Papelaria Central",
-    category: "Material de Escritório",
-    salePrice: 32.0,
-    active: true,
-    outOfStock: true
-  },
-  {
-    id: "p5",
-    name: "Cimento CP II",
-    code: "PRD-005",
-    description: "Saco 50kg",
-    supplierName: "Construtora Sul",
-    category: "Construção",
-    salePrice: 36.9,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p6",
-    name: "Arroz Tipo 1",
-    code: "PRD-006",
-    description: "Pacote 5kg",
-    supplierName: "Alimentos BR",
-    category: "Alimentos",
-    salePrice: 28.99,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p7",
-    name: "Toalha de Banho",
-    code: "PRD-007",
-    description: "Algodão 70x140cm",
-    supplierName: "Têxtil Norte",
-    category: "Têxtil",
-    salePrice: 45.0,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p8",
-    name: "Fone Bluetooth",
-    code: "PRD-008",
-    description: "Over-ear com cancelamento",
-    supplierName: "Tech Import",
-    category: "Eletrônicos",
-    salePrice: 189.0,
-    active: false,
-    outOfStock: true
-  },
-  {
-    id: "p9",
-    name: "Luminária LED",
-    code: "PRD-009",
-    description: "Mesa articulada USB",
-    supplierName: "Distribuidora Alfa",
-    category: "Eletrônicos",
-    salePrice: 112.0,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p10",
-    name: "Caderno Universitário",
-    code: "PRD-010",
-    description: "96 folhas capa dura",
-    supplierName: "Papelaria Central",
-    category: "Material de Escritório",
-    salePrice: 18.9,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p11",
-    name: "Óleo de Soja",
-    code: "PRD-011",
-    description: "Garrafa 900ml",
-    supplierName: "Alimentos BR",
-    category: "Alimentos",
-    salePrice: 9.99,
-    active: true,
-    outOfStock: false
-  },
-  {
-    id: "p12",
-    name: "Martelo Unha",
-    code: "PRD-012",
-    description: "Cabo de fibra 27mm",
-    supplierName: "Construtora Sul",
-    category: "Construção",
-    salePrice: 24.5,
-    active: true,
-    outOfStock: false
-  }
 ];
 
 function formatBRL(n) {
@@ -168,12 +40,52 @@ function formatInt(n) {
  */
 export default function ProductsPage() {
   const { canManageInventory } = usePermissions();
-  const [rows, setRows] = useState(DEMO_ROWS);
+  const [rows, setRows] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [page, setPage] = useState(1);
-  const [importOpen, setImportOpen] = useState(false);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadRows = useCallback(async () => {
+    setIsLoading(true);
+    setFeedback({ text: "", kind: "" });
+    try {
+      const [materials, suppliersData] = await Promise.all([fetchMaterials(), fetchSuppliers()]);
+      setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
+      const supplierById = new Map((Array.isArray(suppliersData) ? suppliersData : []).map((s) => [String(s.id), s]));
+      const mapped = (Array.isArray(materials) ? materials : []).map((m) => {
+        const sid = m.supplierId != null ? String(m.supplierId) : "";
+        const supplierName = sid && supplierById.has(sid) ? supplierById.get(sid)?.name || "—" : "—";
+        return {
+          id: m.id,
+          name: m.name || "—",
+          code: `PRD-${String(m.id || "").slice(-6).toUpperCase()}`,
+          description: m.unit ? `Unidade: ${m.unit}` : "—",
+          supplierName,
+          category: m.category || "—",
+          salePrice: 0,
+          active: m.active !== false,
+          outOfStock: Number(m.currentStock) <= 0,
+          unit: m.unit || "un",
+          minStock: Number(m.minStock) || 0,
+          currentStock: Number(m.currentStock) || 0
+        };
+      });
+      setRows(mapped);
+    } catch (err) {
+      setRows([]);
+      setFeedback({ text: err?.message || "Não foi possível carregar os produtos do banco.", kind: "danger" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRows();
+  }, [loadRows]);
 
   const categoriesFromDb = useMemo(() => {
     const s = new Set(PRODUCT_UI_DEFAULT_CATEGORIES);
@@ -184,12 +96,8 @@ export default function ProductsPage() {
   }, [rows]);
 
   const supplierOptions = useMemo(() => {
-    const map = new Map();
-    rows.forEach((r) => {
-      if (r.supplierName) map.set(r.supplierName, { id: r.supplierName, name: r.supplierName });
-    });
-    return [...map.values()];
-  }, [rows]);
+    return suppliers.map((s) => ({ id: String(s.id), name: s.name }));
+  }, [suppliers]);
 
   const kpiMetrics = useMemo(() => {
     const ativos = rows.filter((r) => r.active).length;
@@ -241,7 +149,6 @@ export default function ProductsPage() {
 
   useEffect(() => {
     if (!canManageInventory) {
-      setImportOpen(false);
       setProductModalOpen(false);
       setEditingProduct(null);
     }
@@ -354,72 +261,70 @@ export default function ProductsPage() {
       id: r.id,
       name: r.name,
       productCode: r.code,
-      description: r.description,
+      description: "",
       category: r.category,
-      supplierId: r.supplierName,
-      currentStock: r.outOfStock ? 0 : 10,
-      minStock: 1,
+      supplierId: "",
+      currentStock: r.currentStock ?? 0,
+      minStock: r.minStock ?? 0,
       active: r.active,
-      unit: "un",
-      salePrice: r.salePrice,
-      costPrice: r.salePrice * 0.7
+      unit: r.unit || "un",
+      salePrice: 0,
+      costPrice: 0
     });
     setProductModalOpen(true);
   };
 
-  const supplierLabelFromPayload = (payload) => {
-    const sid = payload.supplierId;
-    if (sid == null || sid === "") return "—";
-    const hit = supplierOptions.find((s) => String(s.id) === String(sid));
-    return hit?.name ?? String(sid);
-  };
-
-  const handleSaveProduct = (payload) => {
-    const supplierName = supplierLabelFromPayload(payload);
-    if (editingProduct) {
-      setRows((prev) =>
-        prev.map((x) =>
-          x.id === editingProduct.id
-            ? {
-                ...x,
-                name: payload.name || x.name,
-                code: payload.productCode?.trim() || x.code,
-                category: payload.category || x.category,
-                supplierName,
-                salePrice: Number(payload.salePrice) || x.salePrice,
-                active: payload.active !== false,
-                description: (payload.description && payload.description.trim()) || x.description,
-                outOfStock: Number(payload.quantity) <= 0
-              }
-            : x
-        )
-      );
-    } else {
-      const id = `p-${Date.now()}`;
-      setRows((prev) => [
-        ...prev,
-        {
-          id,
-          name: payload.name || "Novo produto",
-          code: payload.productCode || `PRD-${String(prev.length + 1).padStart(3, "0")}`,
-          description: (payload.description && payload.description.trim()) || "—",
-          supplierName,
-          category: payload.category || "Eletrônicos",
-          salePrice: Number(payload.salePrice) || 0,
-          active: payload.active !== false,
-          outOfStock: Number(payload.quantity) <= 0
+  const handleSaveProduct = async (payload) => {
+    setIsSaving(true);
+    setFeedback({ text: "", kind: "" });
+    try {
+      if (editingProduct) {
+        await updateMaterial(editingProduct.id, {
+          name: payload.name,
+          category: payload.category,
+          unit: payload.unit || "un",
+          minStock: Number(payload.minQuantity) || 0,
+          active: payload.active !== false
+        });
+        setFeedback({ text: "Produto atualizado no banco.", kind: "success" });
+      } else {
+        const created = await createMaterial({
+          name: payload.name,
+          category: payload.category,
+          unit: payload.unit || "un",
+          minStock: Number(payload.minQuantity) || 0,
+          active: payload.active !== false
+        });
+        const qty = Number(payload.quantity) || 0;
+        if (qty > 0 && created?.id) {
+          await createMovement({
+            type: "IN",
+            materialId: created.id,
+            quantity: qty,
+            notes: "Carga inicial de inventário"
+          });
         }
-      ]);
+        setFeedback({ text: "Produto cadastrado no banco.", kind: "success" });
+      }
+      await loadRows();
+      setProductModalOpen(false);
+      setEditingProduct(null);
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível salvar no banco.", kind: "danger" });
+    } finally {
+      setIsSaving(false);
     }
-    setProductModalOpen(false);
-    setEditingProduct(null);
-    setFeedback({ text: "Produto salvo (demonstração local).", kind: "success" });
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm("Excluir este produto da lista?")) return;
-    setRows((prev) => prev.filter((x) => x.id !== id));
-    setFeedback({ text: "Item removido da lista.", kind: "info" });
+    try {
+      await deleteMaterial(id);
+      await loadRows();
+      setFeedback({ text: "Produto removido do banco.", kind: "success" });
+    } catch (err) {
+      setFeedback({ text: err?.message || "Não foi possível excluir o produto.", kind: "danger" });
+    }
   };
 
   return (
@@ -449,9 +354,9 @@ export default function ProductsPage() {
         </div>
         <div className="products-catalog-page__actions">
           {canManageInventory ? (
-            <button type="button" className="btn products-catalog-page__btn-outline" onClick={() => setImportOpen(true)}>
-              <i className="ri-file-upload-line me-1" aria-hidden />
-              Importar
+            <button type="button" className="btn products-catalog-page__btn-outline" onClick={() => void loadRows()} disabled={isLoading}>
+              <i className="ri-refresh-line me-1" aria-hidden />
+              {isLoading ? "Atualizando..." : "Atualizar"}
             </button>
           ) : null}
           {canManageInventory ? (
@@ -502,7 +407,15 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody>
-              {pageSlice.length ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8}>
+                    <div className="products-catalog-table__empty py-5 text-center text-muted">
+                      Carregando produtos...
+                    </div>
+                  </td>
+                </tr>
+              ) : pageSlice.length ? (
                 pageSlice.map((r) => (
                   <tr key={r.id}>
                     <td>
@@ -598,15 +511,6 @@ export default function ProductsPage() {
         </nav>
       ) : null}
 
-      <ProductImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImported={() => {
-          setImportOpen(false);
-          setFeedback({ text: "Importação concluída (demonstração).", kind: "success" });
-        }}
-      />
-
       <AddProductModal
         open={productModalOpen}
         onClose={() => {
@@ -617,7 +521,7 @@ export default function ProductsPage() {
         categoriesFromDb={categoriesFromDb}
         editingMaterial={editingProduct}
         onSave={handleSaveProduct}
-        isSaving={false}
+        isSaving={isSaving}
       />
     </div>
   );

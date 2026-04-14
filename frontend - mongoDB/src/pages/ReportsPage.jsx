@@ -30,21 +30,27 @@ function ReportsPage() {
   const [search, setSearch] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    fetchStockSummary()
-      .then((data) => setSummary(data))
-      .catch(() => setSummary({ totalItems: 0, totalStock: 0, byMaterial: [] }));
-    fetchMinStockAlerts()
-      .then((rows) => {
+    setIsLoading(true);
+    Promise.all([fetchStockSummary(), fetchMinStockAlerts()])
+      .then(([summaryData, rows]) => {
+        setSummary(summaryData);
         const list = Array.isArray(rows) ? rows : [];
         setAlertRows(list);
         setAlertCount(list.length);
       })
-      .catch(() => {
+      .catch((err) => {
+        setSummary({ totalItems: 0, totalStock: 0, byMaterial: [] });
         setAlertRows([]);
         setAlertCount(0);
-      });
+        setFeedback({
+          text: err?.message || "Não foi possível carregar os relatórios agora.",
+          kind: "danger"
+        });
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const categoryCount = useMemo(() => {
@@ -324,7 +330,13 @@ function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4}>
+                    <div className="bm-reports-page__empty">Carregando relatório...</div>
+                  </td>
+                </tr>
+              ) : filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={4}>
                     <div className="bm-reports-page__empty">Nenhum registro encontrado para o filtro atual.</div>
