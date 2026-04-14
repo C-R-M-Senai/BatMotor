@@ -54,8 +54,11 @@ export default function ProductsPage() {
     setFeedback({ text: "", kind: "" });
     try {
       const [materials, suppliersData] = await Promise.all([fetchMaterials(), fetchSuppliers()]);
-      setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
-      const supplierById = new Map((Array.isArray(suppliersData) ? suppliersData : []).map((s) => [String(s.id), s]));
+      const supplierList = (Array.isArray(suppliersData) ? suppliersData : []).filter(
+        (s) => s != null && typeof s === "object"
+      );
+      setSuppliers(supplierList);
+      const supplierById = new Map(supplierList.map((s) => [String(s.id ?? ""), s]));
       const mapped = (Array.isArray(materials) ? materials : []).map((m) => {
         const sid = m.supplierId != null ? String(m.supplierId) : "";
         const supplierName = sid && supplierById.has(sid) ? supplierById.get(sid)?.name || "—" : "—";
@@ -64,6 +67,7 @@ export default function ProductsPage() {
           name: m.name || "—",
           code: `PRD-${String(m.id || "").slice(-6).toUpperCase()}`,
           description: m.unit ? `Unidade: ${m.unit}` : "—",
+          supplierId: sid,
           supplierName,
           category: m.category || "—",
           salePrice: 0,
@@ -263,7 +267,7 @@ export default function ProductsPage() {
       productCode: r.code,
       description: "",
       category: r.category,
-      supplierId: "",
+      supplierId: r.supplierId != null ? String(r.supplierId) : "",
       currentStock: r.currentStock ?? 0,
       minStock: r.minStock ?? 0,
       active: r.active,
@@ -284,7 +288,8 @@ export default function ProductsPage() {
           category: payload.category,
           unit: payload.unit || "un",
           minStock: Number(payload.minQuantity) || 0,
-          active: payload.active !== false
+          active: payload.active !== false,
+          supplierId: payload.supplierId ?? null
         });
         setFeedback({ text: "Produto atualizado no banco.", kind: "success" });
       } else {
@@ -293,7 +298,8 @@ export default function ProductsPage() {
           category: payload.category,
           unit: payload.unit || "un",
           minStock: Number(payload.minQuantity) || 0,
-          active: payload.active !== false
+          active: payload.active !== false,
+          supplierId: payload.supplierId || undefined
         });
         const qty = Number(payload.quantity) || 0;
         if (qty > 0 && created?.id) {

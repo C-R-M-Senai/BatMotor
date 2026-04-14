@@ -18,9 +18,15 @@
  * Usar sempre isto ao mapear listagens para o React.
  */
 export function leanId(row) {
-  if (!row || typeof row !== "object") return "";
-  if (row.id != null && String(row.id).trim() !== "") return String(row.id);
-  if (row._id != null && String(row._id).trim() !== "") return String(row._id);
+  if (row == null) return "";
+  if (typeof row !== "object") return "";
+  try {
+    if (row.id != null && String(row.id).trim() !== "") return String(row.id);
+    const oid = row._id;
+    if (oid != null && String(oid).trim() !== "") return String(oid);
+  } catch {
+    return "";
+  }
   return "";
 }
 
@@ -70,6 +76,19 @@ export function normalizeAuthSuccess(data) {
 
 export function mapMaterialFromApi(row, saldo) {
   const stock = typeof saldo === "number" ? saldo : 0;
+  if (row == null || typeof row !== "object") {
+    return {
+      id: "",
+      name: "—",
+      category: "",
+      unit: "",
+      minStock: 0,
+      currentStock: stock,
+      active: true,
+      supplierId: ""
+    };
+  }
+  const fid = row.fornecedor_id;
   return {
     id: leanId(row),
     name: row.nome,
@@ -77,11 +96,35 @@ export function mapMaterialFromApi(row, saldo) {
     unit: row.unidade,
     minStock: row.estoque_minimo,
     currentStock: stock,
-    active: row.ativo !== false
+    active: row.ativo !== false,
+    supplierId:
+      fid != null && String(fid).trim() !== "" ? String(fid) : ""
   };
 }
 
 export function mapSupplierFromApi(row) {
+  if (row == null || typeof row !== "object") {
+    return {
+      id: "",
+      name: "—",
+      cnpj: "",
+      email: "",
+      phone: "",
+      contact: "",
+      contactPerson: "",
+      status: "inactive",
+      active: false,
+      city: "",
+      state: "",
+      address: "",
+      category: "",
+      code: "",
+      supplierType: "",
+      since: "",
+      paymentTerms: "",
+      notes: ""
+    };
+  }
   const phone = row.telefone ?? "";
   const email = row.email ?? "";
   const id = leanId(row);
@@ -115,6 +158,17 @@ export function mapMovementTypeToApi(uiType) {
 }
 
 export function mapMovementFromApi(row) {
+  if (row == null || typeof row !== "object") {
+    return {
+      id: "",
+      type: "IN",
+      materialId: "",
+      quantity: 0,
+      notes: "",
+      createdAt: undefined,
+      raw: row
+    };
+  }
   let type = "IN";
   if (row.tipo === "SAIDA") type = "OUT";
   else if (row.tipo === "AJUSTE") type = "ADJ";
@@ -137,6 +191,18 @@ export function mapMovementFromApi(row) {
 }
 
 export function mapUserFromApi(row) {
+  if (row == null || typeof row !== "object") {
+    return {
+      id: "",
+      name: "",
+      email: "",
+      cpf: "",
+      accountKind: "",
+      profileRole: "",
+      ativo: false,
+      roles: []
+    };
+  }
   const rolesFromLinks = (row.usuarioPerfis ?? []).map((up) => up.perfil?.role).filter(Boolean);
   const roles = rolesFromLinks.length
     ? rolesFromLinks

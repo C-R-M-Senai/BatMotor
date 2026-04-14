@@ -1,20 +1,39 @@
 import mongoose from "mongoose";
-import { MateriaPrima } from "../models/index";
+import { MateriaFornecedor, MateriaPrima } from "../models/index";
+import {
+  mapPrimeiroFornecedorPorMateria,
+  setFornecedorPrimarioMateria,
+} from "./materiaFornecedor.service";
 
-export function createMateriaPrima(data: {
+export async function createMateriaPrima(data: {
   nome: string;
   categoria: string;
   unidade: string;
   estoque_minimo: number;
   ativo?: boolean;
+  fornecedor_id?: string | null;
 }) {
-  return MateriaPrima.create({
+  const created = await MateriaPrima.create({
     nome: data.nome,
     categoria: data.categoria,
     unidade: data.unidade,
     estoque_minimo: data.estoque_minimo,
     ativo: data.ativo ?? true,
   });
+  const row = await MateriaPrima.findById(created._id).lean();
+  if (!row) return null;
+  const fid =
+    data.fornecedor_id != null ? String(data.fornecedor_id).trim() : "";
+  if (fid && mongoose.Types.ObjectId.isValid(fid)) {
+    await setFornecedorPrimarioMateria(String(row._id), fid);
+  }
+  const map = await mapPrimeiroFornecedorPorMateria([
+    row._id as mongoose.Types.ObjectId,
+  ]);
+  return {
+    ...row,
+    fornecedor_id: map.get(String(row._id)) ?? null,
+  };
 }
 
 export async function listMateriaPrima(filters?: {
@@ -36,15 +55,30 @@ export async function listMateriaPrima(filters?: {
       { categoria: { $regex: busca, $options: "i" } },
     ];
   }
-  return MateriaPrima.find(q).sort({ nome: 1 }).lean();
+  const rows = await MateriaPrima.find(q).sort({ nome: 1 }).lean();
+  if (rows.length === 0) return rows;
+  const ids = rows.map((r) => r._id as mongoose.Types.ObjectId);
+  const map = await mapPrimeiroFornecedorPorMateria(ids);
+  return rows.map((r) => ({
+    ...r,
+    fornecedor_id: map.get(String(r._id)) ?? null,
+  }));
 }
 
-export function findMateriaPrima(id: string) {
+export async function findMateriaPrima(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
-  return MateriaPrima.findById(id).lean();
+  const row = await MateriaPrima.findById(id).lean();
+  if (!row) return null;
+  const map = await mapPrimeiroFornecedorPorMateria([
+    row._id as mongoose.Types.ObjectId,
+  ]);
+  return {
+    ...row,
+    fornecedor_id: map.get(String(row._id)) ?? null,
+  };
 }
 
-export function updateMateriaPrima(
+export async function updateMateriaPrima(
   id: string,
   data: {
     nome?: string;
@@ -52,17 +86,36 @@ export function updateMateriaPrima(
     unidade?: string;
     estoque_minimo?: number;
     ativo?: boolean;
+    fornecedor_id?: string | null;
   },
 ) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return Promise.resolve(null);
   }
-  return MateriaPrima.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
+  const { fornecedor_id, ...fields } = data;
+  const row = await MateriaPrima.findByIdAndUpdate(
+    id,
+    { $set: fields },
+    { new: true },
+  ).lean();
+  if (!row) return null;
+  if (fornecedor_id !== undefined) {
+    await setFornecedorPrimarioMateria(id, fornecedor_id);
+  }
+  const map = await mapPrimeiroFornecedorPorMateria([
+    row._id as mongoose.Types.ObjectId,
+  ]);
+  return {
+    ...row,
+    fornecedor_id: map.get(String(row._id)) ?? null,
+  };
 }
 
-export function deleteMateriaPrima(id: string) {
+export async function deleteMateriaPrima(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return Promise.resolve(null);
   }
+  const oid = new mongoose.Types.ObjectId(id);
+  await MateriaFornecedor.deleteMany({ materia_prima_id: oid });
   return MateriaPrima.findByIdAndDelete(id).lean();
 }

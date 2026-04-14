@@ -11,7 +11,7 @@ export async function fetchSuppliers() {
   }
   try {
     const { data } = await api.get("/fornecedores");
-    const list = Array.isArray(data) ? data : [];
+    const list = (Array.isArray(data) ? data : []).filter((row) => row != null && typeof row === "object");
     return list.map(mapSupplierFromApi);
   } catch (e) {
     throw toApiError(e, "Não foi possível carregar a lista de fornecedores.");

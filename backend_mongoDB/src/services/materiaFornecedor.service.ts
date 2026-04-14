@@ -83,3 +83,42 @@ export function deleteMateriaFornecedor(
     fornecedor_id: new mongoose.Types.ObjectId(fornecedorId),
   }).lean();
 }
+
+/** Primeiro fornecedor ligado a cada matéria (ordem estável por _id). */
+export async function mapPrimeiroFornecedorPorMateria(
+  materiaIds: mongoose.Types.ObjectId[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!materiaIds.length) return out;
+  const links = await MateriaFornecedor.find({
+    materia_prima_id: { $in: materiaIds },
+  })
+    .select("materia_prima_id fornecedor_id")
+    .sort({ _id: 1 })
+    .lean();
+  for (const l of links) {
+    const mid = String(l.materia_prima_id);
+    if (!out.has(mid)) out.set(mid, String(l.fornecedor_id));
+  }
+  return out;
+}
+
+/**
+ * Define um único fornecedor “principal” para a matéria: remove vínculos anteriores e cria o novo.
+ * `fornecedorId` vazio ou inválido só remove vínculos (sem criar).
+ */
+export async function setFornecedorPrimarioMateria(
+  materiaPrimaId: string,
+  fornecedorId: string | null | undefined,
+) {
+  if (!mongoose.Types.ObjectId.isValid(materiaPrimaId)) return;
+  const mpOid = new mongoose.Types.ObjectId(materiaPrimaId);
+  await MateriaFornecedor.deleteMany({ materia_prima_id: mpOid });
+  const fid =
+    fornecedorId != null ? String(fornecedorId).trim() : "";
+  if (!fid || !mongoose.Types.ObjectId.isValid(fid)) return;
+  await MateriaFornecedor.create({
+    materia_prima_id: mpOid,
+    fornecedor_id: new mongoose.Types.ObjectId(fid),
+  });
+}

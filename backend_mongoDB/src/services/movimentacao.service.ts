@@ -16,6 +16,20 @@ export type MovimentacaoCreateInput = {
   usuario_id?: string;
 };
 
+/** Populate de `usuario_id` pode ser `null` (utilizador apagado; referência órfã). */
+function usuarioFromPopulate(
+  raw: unknown,
+): { id: string; nome: string; email: string } | null {
+  if (raw == null || typeof raw !== "object") return null;
+  const u = raw as { _id?: unknown; nome?: unknown; email?: unknown };
+  if (u._id == null) return null;
+  return {
+    id: String(u._id),
+    nome: typeof u.nome === "string" ? u.nome : "—",
+    email: typeof u.email === "string" ? u.email : "",
+  };
+}
+
 async function aplicarEstoque(
   materiaId: mongoose.Types.ObjectId,
   tipo: TipoMovimentacao,
@@ -123,16 +137,12 @@ export async function createMovimentacao(
   if (!populated) {
     return { id: String(registro._id), ...registro.toObject() };
   }
-  const u = populated.usuario_id as unknown as {
-    _id: mongoose.Types.ObjectId;
-    nome: string;
-    email: string;
-  };
+  const u = usuarioFromPopulate(populated.usuario_id);
   const { _id, usuario_id, ...rest } = populated;
   return {
     ...rest,
     id: String(_id),
-    usuario: { id: String(u._id), nome: u.nome, email: u.email },
+    usuario: u ?? { id: "", nome: "—", email: "" },
   };
 }
 
@@ -171,20 +181,12 @@ export async function listMovimentacoes() {
     .lean();
 
   return rows.map((r) => {
-    const u = r.usuario_id as unknown as {
-      _id: mongoose.Types.ObjectId;
-      nome: string;
-      email: string;
-    };
+    const u = usuarioFromPopulate(r.usuario_id);
     const { _id, usuario_id, ...rest } = r;
     return {
       ...rest,
       id: String(_id),
-      usuario: {
-        id: String(u._id),
-        nome: u.nome,
-        email: u.email,
-      },
+      usuario: u ?? { id: "", nome: "—", email: "" },
     };
   });
 }
@@ -204,20 +206,12 @@ export async function findMovimentacao(id: string) {
     })
     .lean();
   if (!r) return null;
-  const u = r.usuario_id as unknown as {
-    _id: mongoose.Types.ObjectId;
-    nome: string;
-    email: string;
-  };
+  const u = usuarioFromPopulate(r.usuario_id);
   const { usuario_id, ...rest } = r;
   return {
     ...rest,
     id: String(r._id),
-    usuario: {
-      id: String(u._id),
-      nome: u.nome,
-      email: u.email,
-    },
+    usuario: u ?? { id: "", nome: "—", email: "" },
   };
 }
 
@@ -275,15 +269,12 @@ export async function updateMovimentacao(
     err.status = 404;
     throw err;
   }
-  const u = row.usuario_id as unknown as {
-    _id: mongoose.Types.ObjectId;
-    nome: string;
-  };
+  const u = usuarioFromPopulate(row.usuario_id);
   const { _id, usuario_id, ...rest } = row;
   return {
     ...rest,
     id: String(_id),
-    usuario: { id: String(u._id), nome: u.nome },
+    usuario: u ?? { id: "", nome: "—", email: "" },
   };
 }
 

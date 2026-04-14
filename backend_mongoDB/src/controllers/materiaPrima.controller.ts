@@ -3,17 +3,26 @@ import * as svc from "../services/materiaPrima.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
 
 export async function create(req: Request, res: Response) {
-  const { nome, categoria, unidade, estoque_minimo, ativo } = req.body ?? {};
+  const { nome, categoria, unidade, estoque_minimo, ativo, fornecedor_id } =
+    req.body ?? {};
   if (!nome || !categoria || !unidade || estoque_minimo === undefined) {
     return res.status(400).json({ error: "Campos obrigatórios" });
   }
+  const fid =
+    fornecedor_id != null && String(fornecedor_id).trim() !== ""
+      ? String(fornecedor_id).trim()
+      : undefined;
   const row = await svc.createMateriaPrima({
     nome,
     categoria,
     unidade,
     estoque_minimo: Number(estoque_minimo),
     ativo,
+    fornecedor_id: fid,
   });
+  if (!row) {
+    return res.status(500).json({ error: "Falha ao criar matéria-prima" });
+  }
   return res.status(201).json(row);
 }
 
@@ -44,20 +53,28 @@ export async function getById(req: Request, res: Response) {
 
 export async function update(req: Request, res: Response) {
   const id = paramId(req.params.id);
-  const { nome, categoria, unidade, estoque_minimo, ativo } = req.body ?? {};
+  const { nome, categoria, unidade, estoque_minimo, ativo, fornecedor_id } =
+    req.body ?? {};
   if (!isValidObjectId(id)) {
     return res.status(400).json({ error: "Id inválido" });
   }
   if (!nome || !categoria || !unidade || estoque_minimo === undefined) {
     return res.status(400).json({ error: "Campos obrigatórios" });
   }
-  const row = await svc.updateMateriaPrima(id, {
+  const payload: Parameters<typeof svc.updateMateriaPrima>[1] = {
     nome,
     categoria,
     unidade,
     estoque_minimo: Number(estoque_minimo),
     ativo,
-  });
+  };
+  if (fornecedor_id !== undefined) {
+    payload.fornecedor_id =
+      fornecedor_id === null || String(fornecedor_id).trim() === ""
+        ? null
+        : String(fornecedor_id).trim();
+  }
+  const row = await svc.updateMateriaPrima(id, payload);
   if (!row) {
     return res.status(404).json({ error: "Matéria-prima não encontrada" });
   }

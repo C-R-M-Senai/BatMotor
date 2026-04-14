@@ -9,7 +9,7 @@ export async function fetchMovements(query = {}) {
     return [...mockDb.movements];
   }
   const { data } = await api.get("/movimentacao", { params: query });
-  const list = Array.isArray(data) ? data : [];
+  const list = (Array.isArray(data) ? data : []).filter((row) => row != null && typeof row === "object");
   return list.map(mapMovementFromApi);
 }
 

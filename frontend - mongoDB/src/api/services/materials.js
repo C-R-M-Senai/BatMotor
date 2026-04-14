@@ -1,6 +1,6 @@
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
-import { mapMaterialFromApi } from "../batmotorAdapters.js";
+import { leanId, mapMaterialFromApi } from "../batmotorAdapters.js";
 import { toApiError } from "./errors.js";
 
 async function fetchMaterialsRemote(params = {}) {
@@ -13,11 +13,15 @@ async function fetchMaterialsRemote(params = {}) {
     params: Object.keys(query).length ? query : undefined
   });
   const { data: estoqueRows } = await api.get("/estoque-atual");
-  const list = Array.isArray(materias) ? materias : [];
+  const list = (Array.isArray(materias) ? materias : []).filter((row) => row != null && typeof row === "object");
   const saldoByMateria = Object.fromEntries(
-    (Array.isArray(estoqueRows) ? estoqueRows : []).map((r) => [r.materia_prima_id, r.quantidade])
+    (Array.isArray(estoqueRows) ? estoqueRows : [])
+      .filter((r) => r != null && typeof r === "object")
+      .map((r) => [r.materia_prima_id, r.quantidade])
   );
-  return list.map((row) => mapMaterialFromApi(row, Number(saldoByMateria[row.id]) || 0));
+  return list.map((row) =>
+    mapMaterialFromApi(row, Number(saldoByMateria[leanId(row)]) || 0)
+  );
 }
 
 export async function fetchMaterials(params = {}) {
@@ -68,16 +72,25 @@ export async function createMaterial(payload) {
     estoque_minimo: Number(payload.minStock) || 0,
     ativo: payload.active !== false
   };
+  if (payload.supplierId != null && String(payload.supplierId).trim() !== "") {
+    body.fornecedor_id = String(payload.supplierId).trim();
+  }
   let data;
   try {
     ({ data } = await api.post("/materia-prima", body));
   } catch (e) {
     throw toApiError(e, "Não foi possível cadastrar a matéria-prima.");
   }
+  if (data == null || typeof data !== "object") {
+    throw new Error("Resposta inválida ao cadastrar matéria-prima.");
+  }
   let saldo = 0;
   try {
     const { data: estoqueRows } = await api.get("/estoque-atual");
-    const row = (Array.isArray(estoqueRows) ? estoqueRows : []).find((r) => r.materia_prima_id === data.id);
+    const mid = leanId(data);
+    const row = (Array.isArray(estoqueRows) ? estoqueRows : []).find(
+      (r) => String(r.materia_prima_id) === String(mid)
+    );
     if (row) saldo = Number(row.quantidade) || 0;
   } catch {
     /* sem linha em estoque ainda */
@@ -106,6 +119,12 @@ export async function updateMaterial(id, payload) {
     estoque_minimo: Number(payload.minStock) || 0
   };
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
+  if (payload.supplierId !== undefined) {
+    body.fornecedor_id =
+      payload.supplierId == null || String(payload.supplierId).trim() === ""
+        ? null
+        : String(payload.supplierId).trim();
+  }
   let data;
   try {
     ({ data } = await api.put(`/materia-prima/${id}`, body));
@@ -113,11 +132,15 @@ export async function updateMaterial(id, payload) {
     throw toApiError(e, "Não foi possível atualizar a matéria-prima.");
   }
   const updated = data?.materia ?? data;
+  if (updated == null || typeof updated !== "object") {
+    throw new Error("Resposta inválida ao atualizar matéria-prima.");
+  }
   let saldo = 0;
   try {
     const { data: estoqueRows } = await api.get("/estoque-atual");
+    const mid = leanId(updated);
     const row = (Array.isArray(estoqueRows) ? estoqueRows : []).find(
-      (r) => r.materia_prima_id === updated.id
+      (r) => String(r.materia_prima_id) === String(mid)
     );
     if (row) saldo = Number(row.quantidade) || 0;
   } catch {
