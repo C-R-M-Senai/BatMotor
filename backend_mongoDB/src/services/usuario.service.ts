@@ -1,3 +1,7 @@
+/**
+ * Utilizadores: CRUD, unicidade e-mail/CPF, atribuição de perfil na criação (não-ADMIN),
+ * e agregação de perfis para resposta JSON (`UsuarioComPerfisJson`).
+ */
 import mongoose from "mongoose";
 import { Role } from "../types/domain";
 import {
@@ -8,6 +12,7 @@ import {
 } from "../models/index";
 import { hashPassword } from "../utils/password";
 
+/** Utilizador com lista de perfis (ids e roles) para a API. */
 export type UsuarioComPerfisJson = {
   id: string;
   nome: string;
@@ -21,6 +26,7 @@ export type UsuarioComPerfisJson = {
   }[];
 };
 
+/** Carrega `UsuarioPerfil` populado e monta o DTO usado em list/find/create. */
 async function shapeUsuarioComPerfis(
   u: mongoose.FlattenMaps<{
     _id: mongoose.Types.ObjectId;
@@ -60,6 +66,7 @@ async function shapeUsuarioComPerfis(
   };
 }
 
+/** Roles de todos os perfis do utilizador; perfil em falta assume FUNCIONARIO. */
 export async function getRolesForUsuario(userId: string): Promise<Role[]> {
   if (!mongoose.Types.ObjectId.isValid(userId)) return [];
   const oid = new mongoose.Types.ObjectId(userId);
@@ -77,12 +84,14 @@ export async function getRolesForUsuario(userId: string): Promise<Role[]> {
   });
 }
 
+/** Erro HTTP 409 para e-mail/CPF duplicado. */
 function conflictError(message: string) {
   const err = new Error(message) as Error & { status: number };
   err.status = 409;
   return err;
 }
 
+/** Garante unicidade de e-mail e CPF (opcionalmente excluindo um `_id` na edição). */
 async function ensureUsuarioUniqueFields(data: {
   email?: string;
   cpf?: string;
@@ -117,6 +126,7 @@ async function ensureUsuarioUniqueFields(data: {
   }
 }
 
+/** Todos os utilizadores ordenados por nome, cada um com perfis. */
 export async function listUsuarios(): Promise<UsuarioComPerfisJson[]> {
   const rows = await Usuario.find().sort({ nome: 1 }).lean();
   const out: UsuarioComPerfisJson[] = [];
@@ -126,6 +136,7 @@ export async function listUsuarios(): Promise<UsuarioComPerfisJson[]> {
   return out;
 }
 
+/** Detalhe por id ou `null` se inválido/inexistente. */
 export async function findUsuario(
   id: string,
 ): Promise<UsuarioComPerfisJson | null> {
@@ -135,6 +146,10 @@ export async function findUsuario(
   return shapeUsuarioComPerfis(u);
 }
 
+/**
+ * Cria utilizador com hash de senha; opcionalmente liga perfil GERENTE ou FUNCIONARIO (seed necessário).
+ * Não permite criar ADMIN por esta rota.
+ */
 export async function createUsuario(data: {
   nome: string;
   email: string;
@@ -192,6 +207,7 @@ export async function createUsuario(data: {
   return shapeUsuarioComPerfis(u);
 }
 
+/** Atualiza dados e senha; valida unicidade; resposta sem lista de perfis. */
 export async function updateUsuario(
   id: string,
   data: {
@@ -246,6 +262,7 @@ export async function updateUsuario(
   };
 }
 
+/** Apaga movimentações e vínculos de perfil deste utilizador, depois o `Usuario`. */
 export async function deleteUsuario(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error("Id inválido") as Error & { status: number };

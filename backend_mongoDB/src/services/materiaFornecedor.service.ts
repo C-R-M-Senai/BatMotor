@@ -1,6 +1,11 @@
+/**
+ * Liga matéria-prima a fornecedores (N:N). Inclui helpers para o “primeiro” fornecedor
+ * por matéria e para substituir todos os vínculos por um fornecedor principal.
+ */
 import mongoose from "mongoose";
 import { MateriaFornecedor } from "../models/index";
 
+/** Cria um par (matéria, fornecedor); ids convertidos para ObjectId. */
 export function createMateriaFornecedor(data: {
   materia_prima_id: string;
   fornecedor_id: string;
@@ -11,6 +16,7 @@ export function createMateriaFornecedor(data: {
   });
 }
 
+/** Lista todos os vínculos com matéria e fornecedor populados (lean). */
 export async function listMateriaFornecedor() {
   return MateriaFornecedor.find()
     .populate({ path: "materia_prima_id", options: { lean: true } })
@@ -18,6 +24,7 @@ export async function listMateriaFornecedor() {
     .lean();
 }
 
+/** Par exato (matéria + fornecedor); `null` se ids inválidos ou não encontrado. */
 export async function findMateriaFornecedor(
   materiaPrimaId: string,
   fornecedorId: string,
@@ -37,6 +44,10 @@ export async function findMateriaFornecedor(
     .lean();
 }
 
+/**
+ * Remove o vínculo antigo e cria um novo (pode mudar matéria e/ou fornecedor).
+ * Lança se algum id for inválido.
+ */
 export async function updateMateriaFornecedor(
   materiaId: string,
   fornecedorId: string,
@@ -68,6 +79,7 @@ export async function updateMateriaFornecedor(
   });
 }
 
+/** Remove o par (matéria, fornecedor); `null` se ids inválidos. */
 export function deleteMateriaFornecedor(
   materiaPrimaId: string,
   fornecedorId: string,

@@ -1,6 +1,18 @@
 /**
- * Dados iniciais: perfis ADMIN, GERENTE, FUNCIONARIO e utilizadores de exemplo.
- * Requer MongoDB em execução e MONGODB_URI no .env.
+ * Script de **seed** (dados iniciais) para desenvolvimento e ambientes vazios.
+ *
+ * **Execução:** `npm run db:seed` (ver `package.json` — usa `tsx scripts/seed.ts`).
+ *
+ * **Pré-requisitos:** MongoDB acessível e `MONGODB_URI` definida no `.env` (como no arranque da API).
+ *
+ * **O que faz (idempotente em grande parte):**
+ * - Garante documentos `Perfil` para ADMIN, GERENTE e FUNCIONARIO.
+ * - Garante três utilizadores de exemplo com vínculos `UsuarioPerfil`; se já existir por e-mail ou CPF,
+ *   atualiza nome/ativo (e e-mail no caso de colisão por CPF) em vez de duplicar.
+ * - Cria uma matéria-prima de exemplo se ainda não existir com o nome indicado.
+ *
+ * **Segurança:** as senhas em texto no array `usuariosSeed` são só para **dev**; o script imprime
+ * e-mail/senha na consola para facilitar login local — não usar estes segredos em produção.
  */
 import "dotenv/config";
 import mongoose from "mongoose";
@@ -14,6 +26,10 @@ import {
 } from "../src/models/index";
 import { hashPassword } from "../src/utils/password";
 
+/**
+ * Contas padrão alinhadas aos perfis do domínio. Senhas em claro só para seed local;
+ * na base são persistidas com `hashPassword` em novos registos.
+ */
 const usuariosSeed = [
   {
     email: "admin@batmotor.com",
@@ -38,6 +54,9 @@ const usuariosSeed = [
   },
 ];
 
+/**
+ * Garante um `Perfil` com o `role` indicado; se já existir, devolve-o; senão cria com descrição fixa.
+ */
 async function ensurePerfil(role: Role, descricao: string) {
   let p = await Perfil.findOne({ role }).lean();
   if (!p) {
@@ -47,6 +66,13 @@ async function ensurePerfil(role: Role, descricao: string) {
   return p;
 }
 
+/**
+ * Garante utilizador de desenvolvimento: procura por **e-mail** ou **CPF**.
+ *
+ * - Se encontrar por e-mail: atualiza `nome` e `ativo` (não redefine senha aqui).
+ * - Se encontrar só por CPF (e-mail diferente): alinha e-mail, nome e ativo (útil após troca manual).
+ * - Se não existir: cria com senha hasheada.
+ */
 async function ensureUsuarioDev(input: {
   email: string;
   senhaPlain: string;
@@ -84,6 +110,7 @@ async function ensureUsuarioDev(input: {
   });
 }
 
+/** Cria vínculo `UsuarioPerfil` se o par ainda não existir (índice único evita duplicados). */
 async function vincularPerfil(
   usuarioId: mongoose.Types.ObjectId,
   perfilId: mongoose.Types.ObjectId,
@@ -145,6 +172,7 @@ main()
     console.error(e);
     process.exit(1);
   })
+  /** Fecha a ligação MongoDB mesmo em sucesso ou falha, para o processo poder terminar. */
   .finally(async () => {
     await disconnectDb();
   });

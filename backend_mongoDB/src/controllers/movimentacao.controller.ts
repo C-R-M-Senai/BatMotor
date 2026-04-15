@@ -1,8 +1,13 @@
+/**
+ * **Movimentações** de estoque: criação com fluxo JWT opcional ou `usuario_id` (funcionário),
+ * regras de “grande baixa” (env `LARGE_OUT_THRESHOLD`), e CRUD autenticado para listagem/edição.
+ */
 import type { Request, Response } from "express";
 import { Role, TipoMovimentacao } from "../types/domain";
 import * as svc from "../services/movimentacao.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
 
+/** Limite de unidades em SAÍDA acima do qual só ADMIN/GERENTE podem registar (default 500). */
 function parseLargeOutThreshold(): number {
   const n = Number(process.env.LARGE_OUT_THRESHOLD);
   if (Number.isFinite(n) && n > 0) return n;
@@ -17,6 +22,12 @@ function isTipoValido(t: unknown): t is TipoMovimentacao {
   );
 }
 
+/**
+ * `POST /movimentacao` — `optionalAuthenticate` nas rotas.
+ * Com JWT: papéis ADMIN/GERENTE/FUNCIONARIO; saídas ≥ limite exigem GERENTE/ADMIN.
+ * Sem JWT: obrigatório `usuario_id` de funcionário ativo (validado no serviço).
+ * ADMIN pode enviar `usuario_id` para atribuir o operador a outro utilizador.
+ */
 export async function create(req: Request, res: Response) {
   const { materia_prima_id, tipo, quantidade, motivo, usuario_id } =
     req.body ?? {};

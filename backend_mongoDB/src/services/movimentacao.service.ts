@@ -1,3 +1,7 @@
+/**
+ * Movimentações de estoque (entrada/saída/ajuste), atualização de `EstoqueAtual` e regras de permissão.
+ * Respostas expõem `usuario` normalizado (populate pode falhar se o utilizador foi apagado).
+ */
 import mongoose from "mongoose";
 import {
   EstoqueAtual,
@@ -8,6 +12,7 @@ import {
 } from "../models/index";
 import { Role, TipoMovimentacao } from "../types/domain";
 
+/** Payload de criação; admin pode indicar `usuario_id` operador diferente do token. */
 export type MovimentacaoCreateInput = {
   materia_prima_id: string;
   tipo: TipoMovimentacao;
@@ -30,6 +35,10 @@ function usuarioFromPopulate(
   };
 }
 
+/**
+ * Atualiza ou cria linha em `EstoqueAtual`: AJUSTE soma ao atual com piso 0;
+ * ENTRADA/SAÍDA usa `$inc` (saída já validada antes para não ficar negativa).
+ */
 async function aplicarEstoque(
   materiaId: mongoose.Types.ObjectId,
   tipo: TipoMovimentacao,
@@ -56,6 +65,10 @@ async function aplicarEstoque(
   );
 }
 
+/**
+ * Regista movimentação, aplica estoque, devolve registo com matéria e utilizador.
+ * Erros com `.status` 400/404 para o middleware HTTP.
+ */
 export async function createMovimentacao(
   body: MovimentacaoCreateInput,
   auth: { userId: string; roles: Role[] },
@@ -146,6 +159,7 @@ export async function createMovimentacao(
   };
 }
 
+/** Indica se o utilizador está ativo e tem perfil FUNCIONARIO (via `UsuarioPerfil`). */
 export async function usuarioEhFuncionarioAtivo(
   usuarioId: string,
 ): Promise<boolean> {
@@ -165,6 +179,7 @@ export async function usuarioEhFuncionarioAtivo(
   });
 }
 
+/** Lista ordenada por data (mais recente primeiro), com matéria e `usuario` normalizado. */
 export async function listMovimentacoes() {
   const rows = await Movimentacao.find()
     .populate({
@@ -191,6 +206,7 @@ export async function listMovimentacoes() {
   });
 }
 
+/** Uma movimentação por id ou `null` se inválida/inexistente. */
 export async function findMovimentacao(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
   const r = await Movimentacao.findById(id)
@@ -215,6 +231,7 @@ export async function findMovimentacao(id: string) {
   };
 }
 
+/** Atualização parcial; lança 400/404 conforme validação e existência. */
 export async function updateMovimentacao(
   id: string,
   data: {
@@ -278,6 +295,7 @@ export async function updateMovimentacao(
   };
 }
 
+/** Remove o documento; 400 se id inválido, 404 se não existir. */
 export async function deleteMovimentacao(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     const err = new Error("Id inválido") as Error & { status: number };

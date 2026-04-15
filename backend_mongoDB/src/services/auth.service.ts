@@ -1,9 +1,15 @@
+/**
+ * Autenticação: valida credenciais, perfis (`UsuarioPerfil` + `Perfil`) e emite JWT (`signToken`).
+ */
 import mongoose from "mongoose";
 import { verifyPassword } from "../utils/password";
 import { signToken } from "../utils/token";
 import type { Role } from "../types/domain";
 import { Usuario, UsuarioPerfil } from "../models/index";
 
+/**
+ * Login por e-mail/senha. 401 credenciais, 403 inativo; token inclui `roles` agregadas.
+ */
 export async function login(email: string, senha: string) {
   const usuario = await Usuario.findOne({ email }).lean();
   if (!usuario) {

@@ -1,3 +1,7 @@
+/**
+ * CRUD de exemplo sobre o modelo `Teste` (desenvolvimento/demos).
+ * Rotas protegidas por ADMIN em `routes/index.ts`.
+ */
 import type { Request, Response } from "express";
 import * as svc from "../services/teste.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
@@ -40,6 +44,7 @@ export async function update(req: Request, res: Response) {
   return res.status(200).json(row);
 }
 
+/** Resposta **204** sem corpo em caso de sucesso. */
 export async function remove(req: Request, res: Response) {
   const id = paramId(req.params.id);
   if (!isValidObjectId(id)) {

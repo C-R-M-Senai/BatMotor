@@ -1,3 +1,7 @@
+/**
+ * Associações **utilizador ↔ perfil** (tabela de junção). Rotas ADMIN.
+ * `list` devolve forma simplificada `{ usuario, perfil }` a partir dos documentos populados.
+ */
 import type { Request, Response } from "express";
 import * as svc from "../services/usuarioPerfil.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
@@ -40,6 +44,7 @@ export async function getByPair(req: Request, res: Response) {
   return res.status(200).json(row);
 }
 
+/** Troca utilizador e/ou perfil do vínculo; exige pelo menos um campo novo no body. */
 export async function updatePair(req: Request, res: Response) {
   const usuarioId = paramId(req.params.usuario_id);
   const perfilId = paramId(req.params.perfil_id);

@@ -1,6 +1,18 @@
+/**
+ * Modelos Mongoose da API BatMotor: schemas, índices e exportação dos `Model`.
+ *
+ * - Todos os schemas usam `timestamps: false`; datas explícitas aparecem onde o domínio exige
+ *   (ex.: `Usuario.data_atual`, `Movimentacao.data_atual`).
+ * - `idJsonPlugin` padroniza a serialização JSON: expõe `id` (string) em vez de `_id`.
+ * - Enums de domínio (`Role`, `TipoMovimentacao`) vêm de `types/domain` para alinhar com a API e o seed.
+ */
 import mongoose, { Schema } from "mongoose";
 import { Role, TipoMovimentacao } from "../types/domain";
 
+/**
+ * Plugin reutilizável: configura `toJSON` com `virtuals: true`, remove `__v` e transforma `_id` → `id` string.
+ * Assim as respostas HTTP ficam com `id` estável para o frontend sem alterar os nomes dos campos no schema.
+ */
 function idJsonPlugin(schema: Schema) {
   schema.set("toJSON", {
     virtuals: true,
@@ -15,6 +27,7 @@ function idJsonPlugin(schema: Schema) {
   });
 }
 
+/** Entidade de demonstração / testes de CRUD (não substitui o fluxo real de utilizadores). */
 const testeSchema = new Schema(
   {
     nome: { type: String, required: true },
@@ -25,6 +38,10 @@ const testeSchema = new Schema(
 );
 idJsonPlugin(testeSchema);
 
+/**
+ * Utilizador da aplicação: credenciais e dados cadastrais.
+ * `senha` deve ser persistida como hash bcrypt (ver `utils/password`); `email` e `cpf` únicos.
+ */
 const usuarioSchema = new Schema(
   {
     nome: { type: String, required: true },
@@ -32,12 +49,14 @@ const usuarioSchema = new Schema(
     senha: { type: String, required: true },
     cpf: { type: String, required: true, unique: true },
     ativo: { type: Boolean, default: true },
+    /** Atualizado quando o registo muda (uso em respostas de perfil). */
     data_atual: { type: Date, default: Date.now },
   },
   { timestamps: false },
 );
 idJsonPlugin(usuarioSchema);
 
+/** Módulo funcional da aplicação (menus/áreas) para amarrar permissões. */
 const moduloSchema = new Schema(
   {
     nome: { type: String, required: true },
@@ -47,6 +66,10 @@ const moduloSchema = new Schema(
 );
 idJsonPlugin(moduloSchema);
 
+/**
+ * Perfil de autorização: um documento por combinação `role` + descrição opcional.
+ * Regra de negócio na API: apenas um perfil `GERENTE` pode ser criado (validado no serviço).
+ */
 const perfilSchema = new Schema(
   {
     role: {
@@ -60,6 +83,9 @@ const perfilSchema = new Schema(
 );
 idJsonPlugin(perfilSchema);
 
+/**
+ * Catálogo de insumos: preços e stock mínimo são referência; o saldo real está em `EstoqueAtual`.
+ */
 const materiaPrimaSchema = new Schema(
   {
     nome: { type: String, required: true },
@@ -75,6 +101,9 @@ const materiaPrimaSchema = new Schema(
 );
 idJsonPlugin(materiaPrimaSchema);
 
+/**
+ * Fornecedor: identificação fiscal única (`cnpj`); campos extra para cadastro comercial completo.
+ */
 const fornecedorSchema = new Schema(
   {
     nome: { type: String, required: true },
@@ -96,6 +125,10 @@ const fornecedorSchema = new Schema(
 );
 idJsonPlugin(fornecedorSchema);
 
+/**
+ * Associação N:N utilizador ↔ perfil (um utilizador pode ter vários perfis).
+ * Índice único composto impede duplicar o mesmo par.
+ */
 const usuarioPerfilSchema = new Schema(
   {
     usuario_id: {
@@ -114,6 +147,10 @@ const usuarioPerfilSchema = new Schema(
 usuarioPerfilSchema.index({ usuario_id: 1, perfil_id: 1 }, { unique: true });
 idJsonPlugin(usuarioPerfilSchema);
 
+/**
+ * Liga matéria-prima a fornecedor (N:N). O “fornecedor principal” na API é o primeiro por `_id` (serviço).
+ * Índice único: um par (matéria, fornecedor) não se repete.
+ */
 const materiaFornecedorSchema = new Schema(
   {
     materia_prima_id: {
@@ -135,6 +172,9 @@ materiaFornecedorSchema.index(
 );
 idJsonPlugin(materiaFornecedorSchema);
 
+/**
+ * Permissões granulares: para cada par (perfil, módulo), flags CRUD booleanas.
+ */
 const permissaoModuloSchema = new Schema(
   {
     perfil_id: {
@@ -156,6 +196,10 @@ const permissaoModuloSchema = new Schema(
 );
 idJsonPlugin(permissaoModuloSchema);
 
+/**
+ * Saldo agregado por matéria-prima: uma linha por `materia_prima_id` (unique).
+ * Atualizado pelas movimentações e por ajustes no serviço de movimentação.
+ */
 const estoqueAtualSchema = new Schema(
   {
     materia_prima_id: {
@@ -170,6 +214,10 @@ const estoqueAtualSchema = new Schema(
 );
 idJsonPlugin(estoqueAtualSchema);
 
+/**
+ * Histórico de entradas, saídas e ajustes; `usuario_id` é o operador registado.
+ * `data_atual` default `Date.now` na criação.
+ */
 const movimentacaoSchema = new Schema(
   {
     materia_prima_id: {

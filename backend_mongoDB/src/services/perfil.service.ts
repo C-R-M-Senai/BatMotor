@@ -1,3 +1,6 @@
+/**
+ * Perfis de acesso (enum `Role`): CRUD. Só pode existir um perfil GERENTE no sistema.
+ */
 import mongoose from "mongoose";
 import { Role } from "../types/domain";
 import { Perfil } from "../models/index";
@@ -21,15 +24,18 @@ export async function createPerfil(data: {
   });
 }
 
+/** Lista todos os perfis (lean). */
 export function listPerfis() {
   return Perfil.find().lean();
 }
 
+/** Por id ou `null` se inválido/inexistente. */
 export function findPerfil(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
   return Perfil.findById(id).lean();
 }
 
+/** Atualização parcial; `null` se id inválido. */
 export function updatePerfil(
   id: string,
   data: { role?: Role; descricao?: string | null },
@@ -38,6 +44,7 @@ export function updatePerfil(
   return Perfil.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
 }
 
+/** Remove por id; `null` se id inválido. */
 export function deletePerfil(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return Promise.resolve(null);
   return Perfil.findByIdAndDelete(id).lean();

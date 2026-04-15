@@ -1,24 +1,17 @@
 /**
- * =============================================================================
- * errorHandler.ts — RESPOSTA JSON UNIFORME PARA ERROS
- * =============================================================================
- * Executado após todas as rotas (ver app.ts). Recebe err de next(err) ou throws
- * capturados pelo asyncHandler.
+ * Middleware de erro **final** do Express: resposta JSON uniforme para falhas nas rotas e serviços.
  *
- * Preferências de mapeamento:
- *   • err.status (400–599) → mesmo status + err.message
- *   • Prisma: P2002 duplicado, P2025 não encontrado, P2003 FK inválida
- *   • Caso contrário → 500 genérico (detalhe interno no console, não exposto).
- * =============================================================================
+ * Deve ser registado **depois** de todas as rotas (ver `app.ts`). Recebe erros passados via
+ * `next(err)` — em handlers `async`, usar `asyncHandler` para que `throw`/`reject` cheguem aqui.
+ *
+ * Mapeamento:
+ * - Propriedade **`status`** numérica (400–599) no erro → mesmo HTTP status + `err.message` em `{ error }`.
+ * - Códigos **`P2002` / `P2025` / `P2003`** (convenção estilo Prisma, útil se alguma camada ou migração
+ *   ainda emitir estes códigos) → 409, 404, 400 respetivamente com mensagens fixas.
+ * - Caso contrário → **500** genérico; detalhe completo só em `console.error` (não expor stack ao cliente).
  */
 import type { ErrorRequestHandler } from "express";
 
-/**
- * Último middleware do Express: captura erros passados a `next(err)` ou não tratados.
- *
- * Observação didática: em handlers `async`, use `asyncHandler` para garantir que
- * `reject`/`throw` chegue aqui; caso contrário o cliente pode ficar pendurado.
- */
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error("[error]", err);
 

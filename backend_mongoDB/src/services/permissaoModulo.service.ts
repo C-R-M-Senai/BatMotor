@@ -1,6 +1,10 @@
+/**
+ * Permissões por perfil e módulo (CRUD + flags ler/criar/atualizar/excluir).
+ */
 import mongoose from "mongoose";
 import { PermissaoModulo } from "../models/index";
 
+/** Nova linha de permissão; flags default `false` se omitidas. */
 export function createPermissaoModulo(data: {
   perfil_id: string;
   modulo_id: string;
@@ -19,6 +23,7 @@ export function createPermissaoModulo(data: {
   });
 }
 
+/** Lista com `perfil_id` e `modulo_id` populados. */
 export function listPermissaoModulo() {
   return PermissaoModulo.find()
     .populate({ path: "perfil_id", options: { lean: true } })
@@ -26,6 +31,7 @@ export function listPermissaoModulo() {
     .lean();
 }
 
+/** Documento por id com populate; `null` se inválido/inexistente. */
 export function findPermissaoModulo(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
   return PermissaoModulo.findById(id)
@@ -34,6 +40,7 @@ export function findPermissaoModulo(id: string) {
     .lean();
 }
 
+/** Atualiza referências e/ou flags; `null` se id ou novos ids forem inválidos. */
 export function updatePermissaoModulo(
   id: string,
   data: {
@@ -65,6 +72,7 @@ export function updatePermissaoModulo(
     .lean();
 }
 
+/** Remove por id; `null` se id inválido. */
 export function deletePermissaoModulo(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return Promise.resolve(null);
   return PermissaoModulo.findByIdAndDelete(id).lean();

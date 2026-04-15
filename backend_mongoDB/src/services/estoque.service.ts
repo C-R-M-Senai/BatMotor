@@ -1,6 +1,11 @@
+/**
+ * Leitura do estoque atual: agrega `EstoqueAtual` com dados da matéria-prima populada.
+ * Trata matéria apagada (populate vazio) devolvendo `materia: null` e id como string.
+ */
 import mongoose from "mongoose";
 import { EstoqueAtual } from "../models/index";
 
+/** Forma esperada do documento populado em `materia_prima_id`. */
 type MateriaPopulated = mongoose.FlattenMaps<{
   _id: mongoose.Types.ObjectId;
   nome: string;
@@ -10,6 +15,7 @@ type MateriaPopulated = mongoose.FlattenMaps<{
   ativo: boolean;
 }>;
 
+/** Distingue ObjectId cru de documento populado com `_id`. */
 function isPopulatedMateria(v: unknown): v is MateriaPopulated {
   return (
     v != null &&
@@ -19,6 +25,10 @@ function isPopulatedMateria(v: unknown): v is MateriaPopulated {
   );
 }
 
+/**
+ * Lista todas as linhas de estoque; cada item tem `id`, `materia_prima_id` string,
+ * snapshot em `materia` ou `null` se a referência estiver órfã.
+ */
 export async function listEstoqueAtual() {
   const rows = await EstoqueAtual.find()
     .populate({ path: "materia_prima_id", options: { lean: true } })

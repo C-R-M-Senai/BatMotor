@@ -1,30 +1,20 @@
 /**
- * =============================================================================
- * authenticate.ts — IDENTIDADE DO PEDIDO HTTP (JWT)
- * =============================================================================
- * O Express não “sabe” quem é o utilizador: esse papel é do JWT emitido em
- * POST /auth/login (ver auth.service + token.signToken).
+ * Identidade do pedido HTTP via **JWT** emitido em `POST /auth/login` (`auth.service` + `signToken`).
  *
- * DOIS EXPORTÁVEIS:
- *   • authenticate       — obriga header Authorization: Bearer <token> (ou token no body/query
- *                          em cenários de teste); se falhar → 401 JSON.
- *   • optionalAuthenticate — se houver token válido, preenche req.auth; se não houver,
- *                            segue sem erro (usado em POST /movimentacao para aceitar
- *                            funcionário sem sessão JWT desde que envie usuario_id).
+ * O Express não associa utilizador ao pedido sozinho: estes middlewares leem o token, validam com
+ * `verifyToken` e preenchem `req.auth` (tipagem em `types/express.d.ts`).
  *
- * req.auth (tipagem em types/express.d.ts): { userId, email, roles }.
- * Documentação global: docs/GUIA_PEDAGOGICO_BATMOTOR.md
- * =============================================================================
+ * Exportações:
+ * - **`authenticate`** — exige token válido; sem token ou token inválido → **401** JSON.
+ * - **`optionalAuthenticate`** — se existir token válido, preenche `req.auth`; se não houver token,
+ *   continua sem erro (rotas híbridas, ex.: `POST /movimentacao` com `usuario_id` no body).
  */
 import type { RequestHandler } from "express";
 import { verifyToken } from "../utils/token";
 
 /**
- * Autenticação JWT: lê o token em
- * 1) `Authorization: Bearer <token>` (recomendado, padrão REST), ou
- * 2) campo string `token` no JSON do body (útil em testes rápidos no Postman na aba Body).
- *
- * O token é o valor retornado por POST /auth/login — não é a senha de login.
+ * Mensagem devolvida quando não se encontra JWT em nenhuma das fontes suportadas.
+ * Indica `Authorization: Bearer`, body/query `token`, e lembra que o valor vem de `/auth/login`.
  */
 const msgSemToken =
   "Falta o JWT. Envie Authorization: Bearer <token> ou o campo \"token\" no body/query. " +
@@ -32,6 +22,14 @@ const msgSemToken =
   "ou Body → x-www-form-urlencoded com os campos (incluindo token). " +
   "O token vem de POST /auth/login — não use a senha no lugar do token.";
 
+/**
+ * Obtém o JWT bruto na seguinte ordem:
+ * 1. Cabeçalho `Authorization: Bearer <jwt>` (recomendado).
+ * 2. Query `?token=` (útil em testes rápidos).
+ * 3. Campo `token` no body JSON (objeto não array).
+ *
+ * Devolve `null` se nada for encontrado ou strings vazias.
+ */
 function readJwtFromRequest(req: Parameters<RequestHandler>[0]): string | null {
   const header = req.headers.authorization;
   if (header) {
@@ -54,6 +52,7 @@ function readJwtFromRequest(req: Parameters<RequestHandler>[0]): string | null {
   return null;
 }
 
+/** Obriga JWT válido; preenche `req.auth` com `userId`, `email` e `roles` do payload. */
 export const authenticate: RequestHandler = (req, res, next) => {
   const raw = readJwtFromRequest(req);
   if (!raw) {
@@ -73,7 +72,9 @@ export const authenticate: RequestHandler = (req, res, next) => {
 };
 
 /**
- * Se houver JWT válido, preenche `req.auth`; caso contrário segue sem erro (para rotas híbridas).
+ * Se houver token e for válido, comporta-se como `authenticate`.
+ * Se **não** houver token, chama `next()` sem definir `req.auth` (não é erro).
+ * Se houver token **inválido/expirado**, responde **401** (não se ignora o token malformado).
  */
 export const optionalAuthenticate: RequestHandler = (req, res, next) => {
   const raw = readJwtFromRequest(req);

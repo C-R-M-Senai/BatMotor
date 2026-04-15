@@ -1,20 +1,28 @@
+/**
+ * Utilitários de senha com **bcrypt** para o modelo `Usuario`.
+ *
+ * - `hashPassword`: usado no registo/atualização de senha antes de gravar no MongoDB.
+ * - `verifyPassword`: usado no login; suporta hashes bcrypt e, temporariamente, texto plano legado.
+ */
 import bcrypt from "bcrypt";
 
+/** Custo do salt bcrypt (10 é um equilíbrio comum entre segurança e tempo de CPU). */
 const SALT_ROUNDS = 10;
 
 /**
- * Gera hash bcrypt para persistir `Usuario.senha` no banco.
- * Regra de negócio: nunca armazenar senha em texto puro.
+ * Gera hash bcrypt para persistir em `Usuario.senha`.
+ * Regra de negócio: nunca armazenar senha em texto puro em novos registos.
  */
 export async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, SALT_ROUNDS);
 }
 
 /**
- * Compara senha informada no login com o valor salvo no banco.
+ * Compara a senha enviada no login com o valor guardado na base de dados.
  *
- * Compatibilidade: registros antigos em texto puro ainda funcionam uma vez;
- * o ideal é migrar todos para bcrypt (redefinição de senha ou script pontual).
+ * - Se o valor guardado começa por `$2a$` ou `$2b$`, trata-se de bcrypt e usa-se `bcrypt.compare`.
+ * - Caso contrário, comparação em texto plano (compatibilidade com dados antigos); o ideal é migrar
+ *   todos os registos para hash (redefinição ou script de migração).
  */
 export async function verifyPassword(
   plain: string,

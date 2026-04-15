@@ -1,16 +1,22 @@
 /**
- * =============================================================================
- * usuario.controller.ts — USUÁRIOS (CRUD admin + leitura + PATCH /users/me)
+ * Gestão de **utilizadores**: CRUD (ADMIN), listagem (ADMIN/GERENTE com papéis na BD),
+ * leitura por id com restrição para FUNCIONARIO, e
+ * **`PATCH /users/me`** para o próprio utilizador alterar dados (regras por papel).
+ *
  * IDs são ObjectIds em string (MongoDB).
- * =============================================================================
  */
 import type { Request, Response } from "express";
 import { Role } from "../types/domain";
 import * as usuarioService from "../services/usuario.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
 
+/** E-mail do administrador seed — não pode ser apagado (regra de negócio). */
 const EMAIL_ADMIN_PRINCIPAL = "admin@batmotor.com";
 
+/**
+ * `PATCH /users/me` — utilizador autenticado altera o próprio cadastro.
+ * FUNCIONARIO só pode mudar `nome`; GERENTE/ADMIN podem alterar também e-mail e senha.
+ */
 export async function updateMe(req: Request, res: Response) {
   const auth = req.auth!;
   const id = auth.userId;
@@ -68,6 +74,7 @@ export async function list(_req: Request, res: Response) {
   return res.status(200).json(rows);
 }
 
+/** FUNCIONARIO só pode ver o próprio id; ADMIN/GERENTE veem qualquer um. */
 export async function getById(req: Request, res: Response) {
   const id = paramId(req.params.id);
   if (!isValidObjectId(id)) {
@@ -86,6 +93,9 @@ export async function getById(req: Request, res: Response) {
   return res.status(200).json(row);
 }
 
+/**
+ * Cria utilizador com `perfil_role` opcional GERENTE ou FUNCIONARIO (nunca ADMIN por esta rota).
+ */
 export async function create(req: Request, res: Response) {
   const { nome, email, senha, cpf, ativo, perfil_role } = req.body ?? {};
   if (!nome || !email || !senha || !cpf) {
@@ -149,6 +159,7 @@ export async function update(req: Request, res: Response) {
   }
 }
 
+/** Bloqueia apagar o administrador principal identificado por `EMAIL_ADMIN_PRINCIPAL`. */
 export async function remove(req: Request, res: Response) {
   const id = paramId(req.params.id);
   if (!isValidObjectId(id)) {

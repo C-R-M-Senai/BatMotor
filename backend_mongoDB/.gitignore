@@ -7,8 +7,9 @@ global-bundle.pem
 .env.local
 .env.*.local
 
-# Cliente Prisma gerado (recriar com: npx prisma generate)
-/src/generated
+# Artefactos gerados em src/generated (ex.: cliente Prisma). README.md permanece versionado.
+/src/generated/**
+!/src/generated/README.md
 
 #docker-compose.yml
 

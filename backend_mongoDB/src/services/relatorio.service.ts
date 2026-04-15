@@ -1,11 +1,19 @@
+/**
+ * Relatórios agregados: movimentações por dia (janela configurável) e itens abaixo do estoque mínimo.
+ */
 import { EstoqueAtual, MateriaPrima, Movimentacao } from "../models/index";
 
+/** Formata `YYYY-MM-DD` para rótulo `DD/MM` (exibição em PT). */
 function labelDiaPt(isoDate: string): string {
   const [y, m, d] = isoDate.split("-").map(Number);
   if (!y || !m || !d) return isoDate;
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
 }
 
+/**
+ * Soma entradas/saídas/ajustes por dia num intervalo [hoje − (dias−1), hoje].
+ * `dias` é limitado entre 7 e 90 (default 14).
+ */
 export async function movimentacoesPorDia(diasParam?: number) {
   const dias = Math.min(90, Math.max(7, Number(diasParam) || 14));
   const end = new Date();
@@ -50,6 +58,9 @@ export async function movimentacoesPorDia(diasParam?: number) {
   }));
 }
 
+/**
+ * Matérias ativas cuja quantidade em `EstoqueAtual` (ou 0) está abaixo de `estoque_minimo`.
+ */
 export async function listEstoqueAbaixoMinimo() {
   const materias = await MateriaPrima.find({ ativo: true })
     .sort({ nome: 1 })

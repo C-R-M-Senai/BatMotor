@@ -1,6 +1,10 @@
+/**
+ * Orquestra o e-mail de “compras”: obtém itens abaixo do mínimo e envia HTML tabular.
+ */
 import { sendAlertEmail } from "./email.service";
 import { listEstoqueAbaixoMinimo } from "./relatorio.service";
 
+/** Escapa texto para inserção segura em HTML (evita XSS no corpo do e-mail). */
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

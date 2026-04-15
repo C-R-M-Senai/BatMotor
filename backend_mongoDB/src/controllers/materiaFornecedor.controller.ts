@@ -1,3 +1,6 @@
+/**
+ * Ligações **matéria-prima ↔ fornecedor** (N:N). Parâmetros de rota: `materiaid`, `fornecedorid`.
+ */
 import type { Request, Response } from "express";
 import * as svc from "../services/materiaFornecedor.service";
 import { isValidObjectId, paramId } from "../utils/objectId";

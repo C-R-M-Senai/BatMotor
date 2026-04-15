@@ -1,3 +1,7 @@
+/**
+ * CRUD de **matéria-prima** + query `?categoria&busca&ativo` na listagem.
+ * `fornecedor_id` opcional na criação/atualização liga fornecedor “principal” (serviço).
+ */
 import type { Request, Response } from "express";
 import * as svc from "../services/materiaPrima.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
@@ -47,6 +51,7 @@ export async function create(req: Request, res: Response) {
   return res.status(201).json(row);
 }
 
+/** `ativo` na query aceita strings `"true"` / `"false"`. */
 export async function list(req: Request, res: Response) {
   const { categoria, busca } = req.query;
   let ativo: boolean | undefined;
@@ -72,6 +77,7 @@ export async function getById(req: Request, res: Response) {
   return res.status(200).json(row);
 }
 
+/** Atualização exige enviar novamente nome, categoria, unidade e estoque_minimo (contrato do controller). */
 export async function update(req: Request, res: Response) {
   const id = paramId(req.params.id);
   const {

@@ -1,34 +1,32 @@
 /**
- * =============================================================================
- * authorize.ts — AUTORIZAÇÃO POR PAPEL (depois da autenticação)
- * =============================================================================
- * Autenticação responde “quem é?”; autorização responde “pode fazer esta acção?”.
+ * **Autorização por papel** (depois da autenticação).
  *
- * requireRole(A, B, …)     — compara com req.auth.roles (vindas do JWT no momento do login).
- * requireRoleFromDb(A, B…) — re-lê perfis na tabela UsuarioPerfil (evita 403 injusto se o
- *                            admin mudou o papel no banco mas o JWT ainda é antigo).
+ * - Autenticação responde “quem é?” (`req.auth`).
+ * - Autorização responde “pode executar esta ação?” comparando papéis com os permitidos na rota.
  *
- * hasAnyAllowedRole: ADMIN sempre passa (regra de negócio explícita).
- * mergeJwtAndDbRoles: união de papéis JWT + BD para decisão única.
+ * Estratégias:
+ * - **`requireRole`** — usa só `req.auth.roles` (copiadas do JWT na emissão do token).
+ * - **`requireRoleFromDb`** — re-lê perfis em `UsuarioPerfil`/`Perfil` e faz união com o JWT,
+ *   evitando **403** injusto se o administrador alterou perfis na base e o token ainda está antigo.
  *
- * Uso típico em routes/index.ts: adminOnly = requireRole(Role.ADMIN).
- * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
- * =============================================================================
+ * Regra explícita: utilizador com **ADMIN** no conjunto de papéis efetivos passa sempre nas verificações
+ * deste ficheiro (`hasAnyAllowedRole`).
  */
 import type { RequestHandler } from "express";
 import { Role } from "../types/domain";
 import { getRolesForUsuario } from "../services/usuario.service";
 
 /**
- * ADMIN pode tudo neste middleware: se o usuário tem role ADMIN, liberamos
- * imediatamente (regra de negócio pedida: administrador vê e altera o sistema inteiro).
+ * Verifica se `userRoles` contém **ADMIN** (liberta tudo) ou algum dos `allowed`.
  */
 function hasAnyAllowedRole(userRoles: Role[], ...allowed: Role[]): boolean {
   if (userRoles.includes(Role.ADMIN)) return true;
   return allowed.some((r) => userRoles.includes(r));
 }
 
-/** Unifica papéis do JWT (login) e do banco (UsuarioPerfil → Perfil). */
+/**
+ * União de papéis da BD com os do JWT (sem duplicar), para uma única lista de decisão.
+ */
 function mergeJwtAndDbRoles(jwtRoles: Role[] | undefined, dbRoles: Role[]): Role[] {
   const out: Role[] = [...dbRoles];
   for (const r of jwtRoles ?? []) {
@@ -38,7 +36,7 @@ function mergeJwtAndDbRoles(jwtRoles: Role[] | undefined, dbRoles: Role[]): Role
 }
 
 /**
- * Exige usuário autenticado (use após `authenticate`).
+ * Garante que `req.auth` existe (utilizar **após** `authenticate` em rotas que só precisam de “alguém logado”).
  */
 export const requireAuth: RequestHandler = (req, res, next) => {
   if (!req.auth) {
@@ -48,7 +46,8 @@ export const requireAuth: RequestHandler = (req, res, next) => {
 };
 
 /**
- * Exige pelo menos uma das roles informadas (ADMIN sempre passa).
+ * Fábrica de middleware: exige pelo menos um dos papéis `allowed` em `req.auth.roles`
+ * (com regra ADMIN acima). **401** se não autenticado; **403** se autenticado mas sem papel.
  */
 export function requireRole(...allowed: Role[]): RequestHandler {
   return (req, res, next) => {
@@ -66,8 +65,8 @@ export function requireRole(...allowed: Role[]): RequestHandler {
 }
 
 /**
- * Como `requireRole`, mas consulta perfis no banco (UsuarioPerfil → Perfil).
- * Evita 403 quando o JWT ainda traz o papel antigo após troca de perfil/sessão.
+ * Igual a `requireRole`, mas os papéis efetivos são `mergeJwtAndDbRoles(req.auth.roles, rolesDaBd)`.
+ * Implementação assíncrona: envolve `getRolesForUsuario` e delega falhas inesperadas a `next(err)`.
  */
 export function requireRoleFromDb(...allowed: Role[]): RequestHandler {
   return (req, res, next) => {

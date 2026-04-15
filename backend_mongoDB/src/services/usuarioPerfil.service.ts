@@ -1,6 +1,10 @@
+/**
+ * Associação utilizador ↔ perfil (`UsuarioPerfil`): CRUD com populate de utilizador e perfil.
+ */
 import mongoose from "mongoose";
 import { UsuarioPerfil } from "../models/index";
 
+/** Cria vínculo utilizador–perfil (ObjectIds). */
 export function createUsuarioPerfil(data: {
   usuario_id: string;
   perfil_id: string;
@@ -11,6 +15,7 @@ export function createUsuarioPerfil(data: {
   });
 }
 
+/** Lista todas as associações com nome/e-mail do utilizador e role/descrição do perfil. */
 export function listUsuarioPerfis() {
   return UsuarioPerfil.find()
     .populate({
@@ -26,6 +31,7 @@ export function listUsuarioPerfis() {
     .lean();
 }
 
+/** Par (usuario_id, perfil_id); `null` se ids inválidos ou não encontrado. */
 export function findUsuarioPerfil(usuarioId: string, perfilId: string) {
   if (
     !mongoose.Types.ObjectId.isValid(usuarioId) ||
@@ -50,6 +56,7 @@ export function findUsuarioPerfil(usuarioId: string, perfilId: string) {
     .lean();
 }
 
+/** Remove o vínculo antigo e cria novo (troca de utilizador e/ou perfil). */
 export async function updateUsuarioPerfil(
   usuarioId: string,
   perfilId: string,
@@ -81,6 +88,7 @@ export async function updateUsuarioPerfil(
   });
 }
 
+/** Remove o par; `null` se ids inválidos. */
 export function deleteUsuarioPerfil(usuarioId: string, perfilId: string) {
   if (
     !mongoose.Types.ObjectId.isValid(usuarioId) ||

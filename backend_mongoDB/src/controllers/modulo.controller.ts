@@ -1,3 +1,6 @@
+/**
+ * CRUD de **módulos** da aplicação (áreas/menus). Rotas restritas a ADMIN.
+ */
 import type { Request, Response } from "express";
 import * as moduloService from "../services/modulo.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
@@ -28,6 +31,7 @@ export async function getById(req: Request, res: Response) {
   return res.status(200).json(row);
 }
 
+/** Atualização exige `nome` no body (validação do controller). */
 export async function update(req: Request, res: Response) {
   const id = paramId(req.params.id);
   const { nome, descricao } = req.body ?? {};

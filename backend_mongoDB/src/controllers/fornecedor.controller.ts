@@ -1,14 +1,22 @@
+/**
+ * CRUD de **fornecedores** + campos comerciais extra mapeados em `extrasFromBody`.
+ * Leituras para qualquer utilizador autenticado; escrita ADMIN/GERENTE (ver rotas).
+ */
 import type { Request, Response } from "express";
 import * as svc from "../services/fornecedor.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
 
+/** Normaliza string opcional: vazio ou só espaços → `null`. */
 function trimOrNull(v: unknown): string | null {
   if (v == null) return null;
   const s = String(v).trim();
   return s === "" ? null : s;
 }
 
-/** Campos extra: só enviados se existirem no body (evita apagar ao omitir chave). */
+/**
+ * Extrai chaves extra do body. Em **create** todas as chaves conhecidas são aplicadas;
+ * em **update** só chaves presentes no body (omitir chave não força limpeza aqui).
+ */
 function extrasFromBody(body: Record<string, unknown>, mode: "create" | "update") {
   const keys = [
     "nome_contato",
@@ -64,6 +72,7 @@ export async function getById(req: Request, res: Response) {
   return res.status(200).json(row);
 }
 
+/** Atualização parcial: campos base só se enviados; extras via `extrasFromBody("update")`. */
 export async function update(req: Request, res: Response) {
   const id = paramId(req.params.id);
   const { nome, email, telefone, ativo } = req.body ?? {};

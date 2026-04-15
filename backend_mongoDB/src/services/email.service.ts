@@ -1,5 +1,9 @@
+/**
+ * Envio de e-mail via Nodemailer (SMTP). Usado por alertas de compras e rotinas similares.
+ */
 import nodemailer from "nodemailer";
 
+/** True se host e destinatário de alerta estão definidos. */
 function smtpConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST?.trim() && process.env.ALERT_EMAIL_TO?.trim());
 }

@@ -1,3 +1,7 @@
+/**
+ * Serviço de matéria-prima: CRUD e enriquecimento com `fornecedor_id` “principal”.
+ * O vínculo principal é o primeiro registo em `MateriaFornecedor` (ver `materiaFornecedor.service`).
+ */
 import mongoose from "mongoose";
 import { MateriaFornecedor, MateriaPrima } from "../models/index";
 import {
@@ -5,6 +9,7 @@ import {
   setFornecedorPrimarioMateria,
 } from "./materiaFornecedor.service";
 
+/** Cria matéria; se `fornecedor_id` for válido, define-o como único fornecedor ligado. */
 export async function createMateriaPrima(data: {
   nome: string;
   categoria: string;
@@ -42,6 +47,10 @@ export async function createMateriaPrima(data: {
   };
 }
 
+/**
+ * Lista com filtros opcionais: categoria exata, texto em nome/categoria (case-insensitive), ativo.
+ * Ordena por nome; cada linha inclui `fornecedor_id` resolvido.
+ */
 export async function listMateriaPrima(filters?: {
   categoria?: string;
   busca?: string;
@@ -71,6 +80,7 @@ export async function listMateriaPrima(filters?: {
   }));
 }
 
+/** Uma matéria por id com `fornecedor_id`; `null` se id inválido ou inexistente. */
 export async function findMateriaPrima(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
   const row = await MateriaPrima.findById(id).lean();
@@ -84,6 +94,10 @@ export async function findMateriaPrima(id: string) {
   };
 }
 
+/**
+ * Atualiza campos da matéria; `fornecedor_id` (se enviado) repõe o fornecedor principal
+ * (apaga vínculos antigos e cria o novo — ver `setFornecedorPrimarioMateria`).
+ */
 export async function updateMateriaPrima(
   id: string,
   data: {
@@ -120,6 +134,7 @@ export async function updateMateriaPrima(
   };
 }
 
+/** Apaga vínculos `MateriaFornecedor` desta matéria e remove o documento `MateriaPrima`. */
 export async function deleteMateriaPrima(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return Promise.resolve(null);

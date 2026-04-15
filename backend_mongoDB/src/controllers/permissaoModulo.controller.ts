@@ -1,3 +1,6 @@
+/**
+ * CRUD de **permissões por perfil e módulo** (flags ler/criar/atualizar/excluir). Rotas ADMIN.
+ */
 import type { Request, Response } from "express";
 import * as svc from "../services/permissaoModulo.service";
 import { isValidObjectId, paramId } from "../utils/objectId";

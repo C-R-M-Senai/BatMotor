@@ -1,21 +1,14 @@
 /**
- * =============================================================================
- * relatorio.controller.ts — RELATÓRIOS E ALERTAS (stocks + gráficos)
- * =============================================================================
- * estoqueBaixo          → lista itens com quantidade < mínimo (service agrega Prisma).
- * movimentacoesPorDia   → query ?dias=N para o Recharts no dashboard.
- * estoqueBaixoEnviarEmail → envia e-mail (SMTP no .env); 503 se não configurado.
- *
- * Lógica pesada: relatorio.service.ts, alertaComprasEmail.service.ts, email.service.ts
- * Guia: docs/GUIA_PEDAGOGICO_BATMOTOR.md
- * =============================================================================
+ * **Relatórios** e alertas: estoque abaixo do mínimo, série diária de movimentações (dashboard),
+ * e envio de e-mail via SMTP (`email.service` + `alertaComprasEmail.service`).
+ * Lógica agregada em `relatorio.service`.
  */
 import type { Request, Response } from "express";
 import * as alertaEmail from "../services/alertaComprasEmail.service";
 import { isAlertEmailConfigured } from "../services/email.service";
 import * as svc from "../services/relatorio.service";
 
-/** GET /relatorios/estoque-baixo — dados para relatório / alertas à equipe de compras. */
+/** `GET /relatorios/estoque-baixo` — itens com quantidade abaixo do mínimo (matérias ativas). */
 export async function estoqueBaixo(_req: Request, res: Response) {
   const rows = await svc.listEstoqueAbaixoMinimo();
   return res.status(200).json({
@@ -25,7 +18,7 @@ export async function estoqueBaixo(_req: Request, res: Response) {
   });
 }
 
-/** GET /relatorios/movimentacoes-por-dia?dias=14 — série real entrada/saída/ajuste para gráficos. */
+/** `GET /relatorios/movimentacoes-por-dia?dias=N` — série entrada/saída/ajuste para gráficos. */
 export async function movimentacoesPorDia(req: Request, res: Response) {
   const diasRaw = req.query.dias;
   const dias =
@@ -45,8 +38,8 @@ export async function movimentacoesPorDia(req: Request, res: Response) {
 }
 
 /**
- * POST /relatorios/estoque-baixo/enviar-email
- * Dispara e-mail para ALERT_EMAIL_TO com lista de itens abaixo do mínimo (requisito Batmotor / compras).
+ * `POST /relatorios/estoque-baixo/enviar-email` — SMTP obrigatório.
+ * **503** se `SMTP_HOST` / `ALERT_EMAIL_TO` não estiverem configurados.
  */
 export async function estoqueBaixoEnviarEmail(_req: Request, res: Response) {
   if (!isAlertEmailConfigured()) {

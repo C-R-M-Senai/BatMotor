@@ -1,3 +1,7 @@
+/**
+ * CRUD de **perfis** (`Role` + descrição). Rotas restritas a ADMIN.
+ * IDs de rota validados com `isValidObjectId`.
+ */
 import type { Request, Response } from "express";
 import { Role } from "../types/domain";
 import * as perfilService from "../services/perfil.service";
