@@ -84,8 +84,8 @@ export function clearSessionStorage() {
     "batmotor-user-id",
     "batmotor-account-kind",
     "batmotor-profile-role",
-    "batmotor-email",
-    "batmotor-user-avatar"
+    "batmotor-email"
+    /* batmotor-user-avatar e batmotor-user-avatar:<id> ficam: foto por utilizador após novo login */
   ];
   try {
     keys.forEach((k) => localStorage.removeItem(k));

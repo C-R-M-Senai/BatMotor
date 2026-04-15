@@ -7,6 +7,7 @@ import { downloadXlsx } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePermissions } from "@/context/PermissionsContext";
+import { useHeaderSearch } from "@/context/HeaderSearchContext";
 import AddProductModal from "../components/AddProductModal";
 import {
   createMaterial,
@@ -17,6 +18,8 @@ import {
   updateMaterial
 } from "@/api";
 import { getProductImageDataUrl, setProductImageDataUrl } from "@/utils/productImageStorage.js";
+import { getProductMeta, removeProductMeta, setProductMeta } from "@/utils/productMetaStorage.js";
+import { isGenericShowAllProductsQuery, rowMatchesQuery } from "@/utils/searchMatch.js";
 
 const PAGE_SIZE = 8;
 
@@ -61,6 +64,7 @@ function formatPriceCell(n) {
  */
 export default function ProductsPage() {
   const { canManageInventory } = usePermissions();
+  const { query: headerSearch } = useHeaderSearch();
   const [rows, setRows] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
@@ -84,12 +88,15 @@ export default function ProductsPage() {
         const sid = m.supplierId != null ? String(m.supplierId) : "";
         const supplierName = sid && supplierById.has(sid) ? supplierById.get(sid)?.name || "—" : "—";
         const observ = m.observacao != null ? String(m.observacao).trim() : "";
+        const meta = getProductMeta(m.id);
         const sp = m.salePrice != null ? Number(m.salePrice) : null;
         const cp = m.costPrice != null ? Number(m.costPrice) : null;
         return {
           id: m.id,
           name: m.name || "—",
           code: `PRD-${String(m.id || "").slice(-6).toUpperCase()}`,
+          barcode: meta.barcode || "",
+          stockLocation: meta.stockLocation || "",
           description: observ || "—",
           unitLabel: formatUnitLabel(m.unit),
           supplierId: sid,
@@ -119,6 +126,31 @@ export default function ProductsPage() {
     void loadRows();
   }, [loadRows]);
 
+  const filteredRows = useMemo(() => {
+    if (!headerSearch.trim()) return rows;
+    if (isGenericShowAllProductsQuery(headerSearch)) return rows;
+    return rows.filter((r) =>
+      rowMatchesQuery(headerSearch, [
+        r.name,
+        r.code,
+        r.description,
+        r.category,
+        r.supplierName,
+        r.observacao,
+        r.unit,
+        r.unitLabel,
+        r.id,
+        r.supplierId,
+        r.barcode,
+        r.stockLocation
+      ])
+    );
+  }, [rows, headerSearch]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [headerSearch]);
+
   const categoriesFromDb = useMemo(() => {
     const s = new Set(PRODUCT_UI_DEFAULT_CATEGORIES);
     rows.forEach((r) => {
@@ -132,14 +164,14 @@ export default function ProductsPage() {
   }, [suppliers]);
 
   const kpiMetrics = useMemo(() => {
-    const ativos = rows.filter((r) => r.active).length;
-    const inativos = rows.filter((r) => !r.active).length;
-    const fora = rows.filter((r) => r.outOfStock).length;
+    const ativos = filteredRows.filter((r) => r.active).length;
+    const inativos = filteredRows.filter((r) => !r.active).length;
+    const fora = filteredRows.filter((r) => r.outOfStock).length;
     return [
       {
         key: "total",
         title: "Total de Produtos",
-        value: formatInt(rows.length),
+        value: formatInt(filteredRows.length),
         iconWrapClass: "dashboard-metric-v2__icon-wrap--blue",
         icon: "ri-box-3-line"
       },
@@ -165,15 +197,15 @@ export default function ProductsPage() {
         icon: "ri-alarm-warning-line"
       }
     ];
-  }, [rows]);
+  }, [filteredRows]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageSlice = useMemo(() => {
     const p = Math.min(page, totalPages);
     const start = (p - 1) * PAGE_SIZE;
-    return rows.slice(start, start + PAGE_SIZE);
-  }, [rows, page, totalPages]);
+    return filteredRows.slice(start, start + PAGE_SIZE);
+  }, [filteredRows, page, totalPages]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -188,7 +220,7 @@ export default function ProductsPage() {
 
   const exportCatalogPdf = async () => {
     if (!canManageInventory) return;
-    if (!rows.length) {
+    if (!filteredRows.length) {
       setFeedback({ text: "Não há produtos para exportar.", kind: "info" });
       return;
     }
@@ -206,10 +238,10 @@ export default function ProductsPage() {
     doc.setTextColor(0, 0, 0);
     doc.text(`Gerado em: ${ts}`, 14, y);
     y += 6;
-    doc.text(`Registros: ${rows.length}`, 14, y);
+    doc.text(`Registros: ${filteredRows.length}`, 14, y);
     y += 8;
 
-    const body = rows.map((r) => [
+    const body = filteredRows.map((r) => [
       r.name || "—",
       r.code,
       (r.description || "—").slice(0, 80),
@@ -251,7 +283,7 @@ export default function ProductsPage() {
 
   const exportCatalogXlsx = async () => {
     if (!canManageInventory) return;
-    if (!rows.length) {
+    if (!filteredRows.length) {
       setFeedback({ text: "Não há produtos para exportar.", kind: "info" });
       return;
     }
@@ -271,7 +303,7 @@ export default function ProductsPage() {
         active: "Ativo",
         outOfStock: "Fora estoque"
       },
-      rows.map((r) => ({
+      filteredRows.map((r) => ({
         ...r,
         salePrice: formatPriceCell(r.salePrice),
         active: r.active ? "Sim" : "Não",
@@ -342,6 +374,10 @@ export default function ProductsPage() {
         if (payload.imageDataUrl) {
           setProductImageDataUrl(editingProduct.id, payload.imageDataUrl);
         }
+        setProductMeta(editingProduct.id, {
+          barcode: payload.barcode,
+          stockLocation: payload.stockLocation
+        });
         setFeedback({ text: "Produto atualizado no banco.", kind: "success" });
       } else {
         const created = await createMaterial({
@@ -367,6 +403,12 @@ export default function ProductsPage() {
         if (created?.id && payload.imageDataUrl) {
           setProductImageDataUrl(created.id, payload.imageDataUrl);
         }
+        if (created?.id) {
+          setProductMeta(created.id, {
+            barcode: payload.barcode,
+            stockLocation: payload.stockLocation
+          });
+        }
         setFeedback({ text: "Produto cadastrado no banco.", kind: "success" });
       }
       await loadRows();
@@ -383,6 +425,7 @@ export default function ProductsPage() {
     if (!window.confirm("Excluir este produto da lista?")) return;
     try {
       await deleteMaterial(id);
+      removeProductMeta(id);
       await loadRows();
       setFeedback({ text: "Produto removido do banco.", kind: "success" });
     } catch (err) {
@@ -540,6 +583,14 @@ export default function ProductsPage() {
                     </td>
                   </tr>
                 ))
+              ) : rows.length > 0 && headerSearch.trim() ? (
+                <tr>
+                  <td colSpan={9}>
+                    <div className="products-catalog-table__empty py-5 text-center text-muted">
+                      Nenhum produto corresponde à pesquisa. Use nome, código (PRD-…), categoria ou fornecedor.
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan={9}>
@@ -554,7 +605,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {rows.length > 0 ? (
+      {filteredRows.length > 0 ? (
         <nav className="products-catalog-page__pagination" aria-label="Paginação">
           <button
             type="button"

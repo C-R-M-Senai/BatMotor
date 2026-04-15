@@ -32,6 +32,8 @@ import {
   updateSupplier
 } from "@/api";
 import { usePermissions } from "@/context/PermissionsContext";
+import { useHeaderSearch } from "@/context/HeaderSearchContext";
+import { isGenericShowAllSuppliersQuery, rowMatchesQuery } from "@/utils/searchMatch.js";
 
 const PAGE_SIZE = 8;
 
@@ -142,6 +144,7 @@ function pillClassForTone(tone) {
 
 function SuppliersPage() {
   const { canManageInventory } = usePermissions();
+  const { query: headerSearch } = useHeaderSearch();
   const [suppliers, setSuppliers] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [page, setPage] = useState(1);
@@ -195,15 +198,41 @@ function SuppliersPage() {
     }, {});
   }, [materials]);
 
+  const filteredSuppliers = useMemo(() => {
+    if (!headerSearch.trim()) return suppliers;
+    if (isGenericShowAllSuppliersQuery(headerSearch)) return suppliers;
+    return suppliers.filter((s) =>
+      rowMatchesQuery(headerSearch, [
+        s.name,
+        s.cnpj,
+        s.email,
+        s.city,
+        s.state,
+        s.category,
+        s.supplierType,
+        s.contactPerson,
+        s.phone,
+        s.address,
+        s.notes,
+        s.id,
+        formatSupplierCode(s)
+      ])
+    );
+  }, [suppliers, headerSearch]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [headerSearch]);
+
   const kpiMetrics = useMemo(() => {
-    const active = suppliers.filter((s) => s.status === "active").length;
-    const inactive = suppliers.filter((s) => s.status === "inactive").length;
-    const pending = suppliers.filter((s) => s.status === "pending").length;
+    const active = filteredSuppliers.filter((s) => s.status === "active").length;
+    const inactive = filteredSuppliers.filter((s) => s.status === "inactive").length;
+    const pending = filteredSuppliers.filter((s) => s.status === "pending").length;
     return [
       {
         key: "total",
         title: "Total de fornecedores",
-        value: formatInt(suppliers.length),
+        value: formatInt(filteredSuppliers.length),
         iconWrapClass: "dashboard-metric-v2__icon-wrap--blue",
         icon: "ri-truck-line"
       },
@@ -229,15 +258,15 @@ function SuppliersPage() {
         icon: "ri-alarm-warning-line"
       }
     ];
-  }, [suppliers]);
+  }, [filteredSuppliers]);
 
-  const pageCount = Math.max(1, Math.ceil(suppliers.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(filteredSuppliers.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
 
   const paginatedSuppliers = useMemo(() => {
     const start = (safePage - 1) * PAGE_SIZE;
-    return suppliers.slice(start, start + PAGE_SIZE);
-  }, [suppliers, safePage]);
+    return filteredSuppliers.slice(start, start + PAGE_SIZE);
+  }, [filteredSuppliers, safePage]);
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
@@ -378,7 +407,7 @@ function SuppliersPage() {
 
   const exportPdf = async () => {
     if (!canManageInventory) return;
-    if (!suppliers.length) {
+    if (!filteredSuppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
     }
@@ -396,10 +425,10 @@ function SuppliersPage() {
     doc.setTextColor(0, 0, 0);
     doc.text(`Gerado em: ${ts}`, 14, y);
     y += 6;
-    doc.text(`Total: ${suppliers.length}`, 14, y);
+    doc.text(`Total: ${filteredSuppliers.length}`, 14, y);
     y += 8;
 
-    const body = suppliers.map((s) => {
+    const body = filteredSuppliers.map((s) => {
       const st = rowStatus(s);
       return [
         s.name || "—",
@@ -428,7 +457,7 @@ function SuppliersPage() {
 
   const exportXlsx = async () => {
     if (!canManageInventory) return;
-    if (!suppliers.length) {
+    if (!filteredSuppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
     }
@@ -445,7 +474,7 @@ function SuppliersPage() {
         materialsCount: "Produtos",
         status: "Status"
       },
-      suppliers.map((s) => {
+      filteredSuppliers.map((s) => {
         const st = rowStatus(s);
         return {
           name: s.name,
@@ -655,6 +684,14 @@ function SuppliersPage() {
                     </tr>
                   );
                 })
+              ) : suppliers.length > 0 && headerSearch.trim() ? (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="suppliers-data-table__empty py-5 text-center">
+                      Nenhum fornecedor corresponde à pesquisa.
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan={6}>
@@ -669,7 +706,7 @@ function SuppliersPage() {
         </div>
       </div>
 
-      {suppliers.length > 0 ? (
+      {filteredSuppliers.length > 0 ? (
         <nav className="suppliers-page__pagination" aria-label="Paginação">
           <button
             type="button"
