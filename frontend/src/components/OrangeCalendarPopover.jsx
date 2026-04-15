@@ -1,3 +1,6 @@
+/**
+ * Calendário popover e campo de data (formato dia/mês/ano) para formulários de movimentação e modais.
+ */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const MONTHS_PT = [

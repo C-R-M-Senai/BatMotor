@@ -1,3 +1,7 @@
+/**
+ * Estilos globais BatMotor: layout #root, login fullscreen, integração com AdminLTE/Bootstrap.
+ * Ficheiro grande — regras organizadas por secções; ver também `texto.css`, `botao.css` se existirem.
+ */
 /* Base do app: ocupar 100% da viewport (evita “faixa” cinza / layout deslocado por CSS do template) */
 body {
   margin: 0;

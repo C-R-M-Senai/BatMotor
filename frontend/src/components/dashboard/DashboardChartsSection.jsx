@@ -1,3 +1,6 @@
+/**
+ * Gráficos ApexCharts (área/barra): movimentações por dia e cartões auxiliares exportáveis.
+ */
 import { useEffect, useMemo, useState } from "react";
 import {
   Area,

@@ -1,3 +1,6 @@
+/**
+ * Utilizadores: lista/criação/remoção alinhada a `GET/POST/DELETE /users` e CPF formatado.
+ */
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { formatCpfDisplay, normalizeCpfDigits } from "@/utils/cpf";

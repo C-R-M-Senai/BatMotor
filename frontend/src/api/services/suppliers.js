@@ -1,3 +1,6 @@
+/**
+ * Fornecedores: `GET/POST/PUT/DELETE /fornecedores` (remoto) ou lista mock com normalização.
+ */
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { mockNormalizeSupplier, mockNextSupplierCode } from "../mock/suppliers.js";

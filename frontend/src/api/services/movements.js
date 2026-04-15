@@ -1,3 +1,6 @@
+/**
+ * Movimentações de stock: `GET /movimentacao`, `POST /movimentacao` com tipos mapeados para a API.
+ */
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { mapMovementFromApi, mapMovementTypeToApi } from "../batmotorAdapters.js";

@@ -1,3 +1,6 @@
+/**
+ * Invólucro visual das páginas de login (variantes split / centered) com ilustração e cartão.
+ */
 import telaDeLoginArt from "@/assets/TelaDeLOGIN.svg";
 
 /**

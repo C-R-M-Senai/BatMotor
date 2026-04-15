@@ -1,3 +1,6 @@
+/**
+ * Resumo de inventário por matéria (estado de stock vs mínimo) e cartão de movimentações da semana.
+ */
 import { MovimentacoesSemanaCard } from "./DashboardChartsSection";
 
 function getStockState(material) {

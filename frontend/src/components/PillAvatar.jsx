@@ -1,7 +1,9 @@
+/**
+ * Avatar circular com iniciais ou imagem; usado na sidebar e menus.
+ */
 import { useEffect, useState } from "react";
 import { resolveDisplayAvatarUrl } from "@/constants/userAvatar";
 
-/** Avatar circular para barras de ícones (sidebar / header). */
 function PillAvatar({ profileRole, userPhotoDataUrl = "", className = "" }) {
   const src = resolveDisplayAvatarUrl(profileRole, userPhotoDataUrl);
   const [imgFailed, setImgFailed] = useState(false);

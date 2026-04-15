@@ -1,3 +1,6 @@
+/**
+ * @file Rodapé da sidebar com avatar, atalhos e logout.
+ */
 import { NavLink } from "react-router-dom";
 import PillAvatar from "./PillAvatar";
 

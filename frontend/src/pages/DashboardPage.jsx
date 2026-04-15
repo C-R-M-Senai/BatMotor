@@ -1,3 +1,6 @@
+/**
+ * Página inicial após login: KPIs, gráficos de movimentações, alertas de stock baixo e resumo.
+ */
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchMinStockAlerts,

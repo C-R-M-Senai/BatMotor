@@ -1,3 +1,6 @@
+/**
+ * @file Select customizado de fornecedores (lista em “vidro” com hover).
+ */
 import { useEffect, useRef, useState } from "react";
 
 /**

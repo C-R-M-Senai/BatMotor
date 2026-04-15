@@ -1,3 +1,7 @@
+/**
+ * Injeta no `document` scripts do template legado (jQuery, OverlayScrollbars, ApexCharts)
+ * a partir de `public/assets`, para páginas que ainda dependem deles.
+ */
 const LEGACY_SCRIPTS = [
   "/assets/jquery.min.js.download",
   "/assets/jquery.overlayScrollbars.min.js.download",

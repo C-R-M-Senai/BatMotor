@@ -1,3 +1,7 @@
+/**
+ * Matérias-prima e estoque: junta `GET /materia-prima` com `GET /estoque-atual` no remoto;
+ * CRUD mapeado com `batmotorAdapters` (`mapMaterialFromApi`).
+ */
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { mapMaterialFromApi } from "../batmotorAdapters.js";

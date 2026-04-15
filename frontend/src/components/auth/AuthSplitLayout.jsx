@@ -1,3 +1,6 @@
+/**
+ * Layout em duas colunas para login: hero + ilustração à esquerda, formulário à direita.
+ */
 import AuthHeroIllustration from "./AuthHeroIllustration";
 
 function AuthSplitLayout({ children }) {

@@ -1,3 +1,6 @@
+/**
+ * Registo e histórico de movimentações (entrada/saída/ajuste), exportações e permissões por perfil.
+ */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";

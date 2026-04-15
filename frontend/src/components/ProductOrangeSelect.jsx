@@ -1,3 +1,6 @@
+/**
+ * @file Dropdown estilizado (categoria/fornecedor) para o modal de produto.
+ */
 import { useEffect, useRef, useState } from "react";
 
 /**

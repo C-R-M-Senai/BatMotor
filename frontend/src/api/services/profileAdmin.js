@@ -1,3 +1,6 @@
+/**
+ * Chamadas administrativas auxiliares: perfis (`/perfil`), utilizador por id, etc.
+ */
 import { api, getUseMock } from "../client.js";
 
 function apiErrorMessage(err) {
