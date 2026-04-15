@@ -13,6 +13,7 @@ import {
 import DashboardKpis from "../components/dashboard/DashboardKpis";
 import DashboardChartsSection from "../components/dashboard/DashboardChartsSection";
 import DashboardBottomSection from "../components/dashboard/DashboardBottomSection";
+import DashboardMenuSearchShortcuts from "../components/dashboard/DashboardMenuSearchShortcuts";
 
 function DashboardPage() {
   const { query: headerSearch } = useHeaderSearch();
@@ -77,6 +78,7 @@ function DashboardPage() {
       <section className="dashboard-section dashboard-section--kpis">
         <DashboardKpis summary={summary} alertsCount={alerts.length} suppliersCount={suppliersCount} />
       </section>
+      <DashboardMenuSearchShortcuts />
       <section className="dashboard-section dashboard-section--charts-main">
         <DashboardChartsSection
           categoriesData={categoriesData}
