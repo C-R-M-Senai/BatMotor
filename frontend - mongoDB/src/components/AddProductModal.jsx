@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExpiryDateField } from "./OrangeCalendarPopover";
 import ProductOrangeSelect from "./ProductOrangeSelect";
+import { getProductImageDataUrl } from "@/utils/productImageStorage.js";
+
+const UNIT_OPTIONS = [
+  { value: "UN", label: "UN (unidade)" },
+  { value: "kg", label: "kg (quilograma)" },
+  { value: "g", label: "g (grama)" },
+  { value: "L", label: "L (litro)" },
+  { value: "mL", label: "mL (mililitro)" },
+  { value: "m", label: "m (metro)" },
+  { value: "m²", label: "m² (metro quadrado)" },
+  { value: "m³", label: "m³ (metro cúbico)" },
+  { value: "cx", label: "cx (caixa)" },
+  { value: "pct", label: "pct (pacote)" },
+  { value: "par", label: "par" }
+];
 
 const INITIAL_FORM = {
   name: "",
@@ -18,7 +33,7 @@ const INITIAL_FORM = {
   weightKg: "0,00",
   dimensions: "",
   expiryStr: "",
-  unit: "un"
+  unit: "UN"
 };
 
 function genProductCode() {
@@ -51,6 +66,7 @@ export default function AddProductModal({
   const [expiryDate, setExpiryDate] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const imageInputRef = useRef(null);
+  const imageFileRef = useRef(null);
 
   /** Só categorias vindas dos produtos no banco; na edição inclui a categoria do item atual. */
   const categorySelectOptions = useMemo(() => {
@@ -62,6 +78,8 @@ export default function AddProductModal({
   useEffect(() => {
     if (!open) return;
     if (editingMaterial) {
+      const rawU = editingMaterial.unit || "UN";
+      const unitNorm = String(rawU).toLowerCase() === "un" ? "UN" : rawU;
       setForm({
         ...INITIAL_FORM,
         name: editingMaterial.name || "",
@@ -72,9 +90,15 @@ export default function AddProductModal({
         quantity: String(editingMaterial.currentStock ?? 0),
         minQuantity: String(editingMaterial.minStock ?? 0),
         active: editingMaterial.active !== false,
-        unit: editingMaterial.unit || "un",
-        costPrice: editingMaterial.costPrice != null ? String(editingMaterial.costPrice) : "",
-        salePrice: editingMaterial.salePrice != null ? String(editingMaterial.salePrice) : "",
+        unit: unitNorm,
+        costPrice:
+          editingMaterial.costPrice != null && editingMaterial.costPrice !== ""
+            ? String(editingMaterial.costPrice)
+            : "0",
+        salePrice:
+          editingMaterial.salePrice != null && editingMaterial.salePrice !== ""
+            ? String(editingMaterial.salePrice)
+            : "0",
         barcode: editingMaterial.barcode || "",
         stockLocation: editingMaterial.stockLocation || "",
         weightKg: editingMaterial.weightKg || "0,00",
@@ -82,10 +106,14 @@ export default function AddProductModal({
         expiryStr: editingMaterial.expiryStr || ""
       });
       setExpiryDate(null);
-      setImagePreview(null);
+      imageFileRef.current = null;
+      const sid = editingMaterial.id != null ? String(editingMaterial.id) : "";
+      const stored = sid ? getProductImageDataUrl(sid) : "";
+      setImagePreview(stored || editingMaterial.imageDataUrl || null);
     } else {
       setForm({ ...INITIAL_FORM, productCode: genProductCode() });
       setExpiryDate(null);
+      imageFileRef.current = null;
       setImagePreview(null);
     }
   }, [open, editingMaterial]);
@@ -100,15 +128,29 @@ export default function AddProductModal({
     const f = files?.[0];
     if (!f || !/^image\//.test(f.type)) return;
     if (imagePreview && imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    imageFileRef.current = f;
     setImagePreview(URL.createObjectURL(f));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.category?.trim()) return;
     if (!form.name?.trim()) return;
     const qty = Number(String(form.quantity).replace(",", ".")) || 0;
     const minQ = Number(String(form.minQuantity).replace(",", ".")) || 0;
+
+    let imageDataUrl = "";
+    const file = imageFileRef.current;
+    if (file) {
+      imageDataUrl = await new Promise((resolve) => {
+        const r = new FileReader();
+        r.onload = () => resolve(typeof r.result === "string" ? r.result : "");
+        r.onerror = () => resolve("");
+        r.readAsDataURL(file);
+      });
+    } else if (imagePreview && String(imagePreview).startsWith("data:")) {
+      imageDataUrl = imagePreview;
+    }
 
     onSave?.({
       name: form.name.trim(),
@@ -123,10 +165,11 @@ export default function AddProductModal({
       minQuantity: minQ,
       supplierId: form.supplierId || undefined,
       active: form.active,
-      unit: form.unit || "un",
+      unit: form.unit || "UN",
       weightKg: form.weightKg,
       dimensions: form.dimensions.trim(),
-      expiryStr: form.expiryStr.trim()
+      expiryStr: form.expiryStr.trim(),
+      imageDataUrl: imageDataUrl || undefined
     });
   };
 
@@ -262,6 +305,23 @@ export default function AddProductModal({
                       onChange={(v) => setForm((p) => ({ ...p, supplierId: String(v) }))}
                       options={suppliers.map((s) => ({ value: String(s.id), label: s.name }))}
                       placeholder="Selecione"
+                    />
+                  </div>
+                </div>
+
+                <div className="row g-3 mt-0">
+                  <div className="col-12">
+                    <label className="add-product-modal__label" id="apm-unit-label" htmlFor="apm-unit">
+                      Unidade de medida <span className="text-danger">*</span>
+                    </label>
+                    <ProductOrangeSelect
+                      id="apm-unit"
+                      listLabelledBy="apm-unit-label"
+                      value={form.unit}
+                      onChange={(v) => setForm((p) => ({ ...p, unit: String(v) }))}
+                      options={UNIT_OPTIONS}
+                      placeholder="Selecione a unidade"
+                      required
                     />
                   </div>
                 </div>

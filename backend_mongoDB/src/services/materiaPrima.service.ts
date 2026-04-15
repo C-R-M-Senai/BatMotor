@@ -12,6 +12,9 @@ export async function createMateriaPrima(data: {
   estoque_minimo: number;
   ativo?: boolean;
   fornecedor_id?: string | null;
+  observacao?: string | null;
+  preco_custo?: number | null;
+  preco_venda?: number | null;
 }) {
   const created = await MateriaPrima.create({
     nome: data.nome,
@@ -19,6 +22,9 @@ export async function createMateriaPrima(data: {
     unidade: data.unidade,
     estoque_minimo: data.estoque_minimo,
     ativo: data.ativo ?? true,
+    observacao: data.observacao ?? null,
+    preco_custo: data.preco_custo ?? null,
+    preco_venda: data.preco_venda ?? null,
   });
   const row = await MateriaPrima.findById(created._id).lean();
   if (!row) return null;
@@ -87,6 +93,9 @@ export async function updateMateriaPrima(
     estoque_minimo?: number;
     ativo?: boolean;
     fornecedor_id?: string | null;
+    observacao?: string | null;
+    preco_custo?: number | null;
+    preco_venda?: number | null;
   },
 ) {
   if (!mongoose.Types.ObjectId.isValid(id)) {

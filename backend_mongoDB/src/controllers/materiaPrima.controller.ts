@@ -3,8 +3,17 @@ import * as svc from "../services/materiaPrima.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
 
 export async function create(req: Request, res: Response) {
-  const { nome, categoria, unidade, estoque_minimo, ativo, fornecedor_id } =
-    req.body ?? {};
+  const {
+    nome,
+    categoria,
+    unidade,
+    estoque_minimo,
+    ativo,
+    fornecedor_id,
+    observacao,
+    preco_custo,
+    preco_venda,
+  } = req.body ?? {};
   if (!nome || !categoria || !unidade || estoque_minimo === undefined) {
     return res.status(400).json({ error: "Campos obrigatórios" });
   }
@@ -19,6 +28,18 @@ export async function create(req: Request, res: Response) {
     estoque_minimo: Number(estoque_minimo),
     ativo,
     fornecedor_id: fid,
+    observacao:
+      observacao != null && String(observacao).trim() !== ""
+        ? String(observacao).trim()
+        : null,
+    preco_custo:
+      preco_custo !== undefined && preco_custo !== null && preco_custo !== ""
+        ? Number(preco_custo)
+        : null,
+    preco_venda:
+      preco_venda !== undefined && preco_venda !== null && preco_venda !== ""
+        ? Number(preco_venda)
+        : null,
   });
   if (!row) {
     return res.status(500).json({ error: "Falha ao criar matéria-prima" });
@@ -53,8 +74,17 @@ export async function getById(req: Request, res: Response) {
 
 export async function update(req: Request, res: Response) {
   const id = paramId(req.params.id);
-  const { nome, categoria, unidade, estoque_minimo, ativo, fornecedor_id } =
-    req.body ?? {};
+  const {
+    nome,
+    categoria,
+    unidade,
+    estoque_minimo,
+    ativo,
+    fornecedor_id,
+    observacao,
+    preco_custo,
+    preco_venda,
+  } = req.body ?? {};
   if (!isValidObjectId(id)) {
     return res.status(400).json({ error: "Id inválido" });
   }
@@ -73,6 +103,24 @@ export async function update(req: Request, res: Response) {
       fornecedor_id === null || String(fornecedor_id).trim() === ""
         ? null
         : String(fornecedor_id).trim();
+  }
+  if (observacao !== undefined) {
+    payload.observacao =
+      observacao === null || String(observacao).trim() === ""
+        ? null
+        : String(observacao).trim();
+  }
+  if (preco_custo !== undefined) {
+    payload.preco_custo =
+      preco_custo === null || preco_custo === ""
+        ? null
+        : Number(preco_custo);
+  }
+  if (preco_venda !== undefined) {
+    payload.preco_venda =
+      preco_venda === null || preco_venda === ""
+        ? null
+        : Number(preco_venda);
   }
   const row = await svc.updateMateriaPrima(id, payload);
   if (!row) {

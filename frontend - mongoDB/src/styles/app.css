@@ -5079,6 +5079,15 @@ body {
   background: #eab308;
 }
 
+.products-catalog-table__thumb {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--bm-border);
+}
+
 .products-catalog-table__product-name {
   font-weight: 700;
   color: #0f172a;
@@ -5474,6 +5483,15 @@ body {
 
 .products-data-table__swatch--yellow {
   background: #eab308;
+}
+
+.products-data-table__thumb {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--bm-border);
 }
 
 .products-data-table__swatch--blue {

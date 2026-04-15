@@ -58,7 +58,16 @@ export async function createSupplier(payload) {
     nome: String(payload.name || "").trim(),
     cnpj: cnpjDigits,
     email: payload.email || undefined,
-    telefone: (payload.phone || payload.contact || "").replace(/\D/g, "") || undefined
+    telefone: (payload.phone || payload.contact || "").replace(/\D/g, "") || undefined,
+    nome_contato: payload.contactPerson?.trim() || null,
+    endereco: payload.address?.trim() || null,
+    cidade: payload.city?.trim() || null,
+    estado: payload.state?.trim() || null,
+    categoria: payload.category?.trim() || null,
+    tipo_fornecedor: payload.supplierType?.trim() || null,
+    data_inicio: payload.since?.trim() || null,
+    condicoes_pagamento: (payload.paymentTerms || payload.paymentTerms2 || "").trim() || null,
+    observacoes: payload.notes?.trim() || null
   };
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
   try {
@@ -88,6 +97,25 @@ export async function updateSupplier(id, payload) {
     body.telefone = String(payload.phone || payload.contact || "").replace(/\D/g, "") || undefined;
   }
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
+  if (payload.contactPerson !== undefined) {
+    body.nome_contato = payload.contactPerson?.trim() || null;
+  }
+  if (payload.address !== undefined) body.endereco = payload.address?.trim() || null;
+  if (payload.city !== undefined) body.cidade = payload.city?.trim() || null;
+  if (payload.state !== undefined) body.estado = payload.state?.trim() || null;
+  if (payload.category !== undefined) body.categoria = payload.category?.trim() || null;
+  if (payload.supplierType !== undefined) {
+    body.tipo_fornecedor = payload.supplierType?.trim() || null;
+  }
+  if (payload.since !== undefined) body.data_inicio = payload.since?.trim() || null;
+  if (payload.paymentTerms !== undefined || payload.paymentTerms2 !== undefined) {
+    body.condicoes_pagamento = (
+      payload.paymentTerms ||
+      payload.paymentTerms2 ||
+      ""
+    ).trim() || null;
+  }
+  if (payload.notes !== undefined) body.observacoes = payload.notes?.trim() || null;
   try {
     const { data } = await api.put(`/fornecedores/${id}`, body);
     return mapSupplierFromApi(data);

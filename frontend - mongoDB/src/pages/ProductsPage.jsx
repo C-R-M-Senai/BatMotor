@@ -13,6 +13,7 @@ import {
   fetchSuppliers,
   updateMaterial
 } from "@/api";
+import { getProductImageDataUrl, setProductImageDataUrl } from "@/utils/productImageStorage.js";
 
 const PAGE_SIZE = 8;
 
@@ -32,6 +33,23 @@ function formatBRL(n) {
 
 function formatInt(n) {
   return Number(n || 0).toLocaleString("pt-BR");
+}
+
+/** Ex.: un → UN, kg → kg */
+function formatUnitLabel(u) {
+  const s = String(u ?? "")
+    .trim()
+    .toLowerCase();
+  if (!s) return "—";
+  if (s === "un" || s === "uni" || s === "und") return "UN";
+  return String(u).trim().length <= 3 ? String(u).trim().toUpperCase() : String(u).trim();
+}
+
+function formatPriceCell(n) {
+  if (n == null || n === "" || Number.isNaN(Number(n))) return "—";
+  const v = Number(n);
+  if (v === 0) return "—";
+  return formatBRL(v);
 }
 
 /**
@@ -62,20 +80,27 @@ export default function ProductsPage() {
       const mapped = (Array.isArray(materials) ? materials : []).map((m) => {
         const sid = m.supplierId != null ? String(m.supplierId) : "";
         const supplierName = sid && supplierById.has(sid) ? supplierById.get(sid)?.name || "—" : "—";
+        const observ = m.observacao != null ? String(m.observacao).trim() : "";
+        const sp = m.salePrice != null ? Number(m.salePrice) : null;
+        const cp = m.costPrice != null ? Number(m.costPrice) : null;
         return {
           id: m.id,
           name: m.name || "—",
           code: `PRD-${String(m.id || "").slice(-6).toUpperCase()}`,
-          description: m.unit ? `Unidade: ${m.unit}` : "—",
+          description: observ || "—",
+          unitLabel: formatUnitLabel(m.unit),
           supplierId: sid,
           supplierName,
           category: m.category || "—",
-          salePrice: 0,
+          salePrice: sp != null && !Number.isNaN(sp) ? sp : 0,
+          costPrice: cp != null && !Number.isNaN(cp) ? cp : null,
           active: m.active !== false,
           outOfStock: Number(m.currentStock) <= 0,
           unit: m.unit || "un",
           minStock: Number(m.minStock) || 0,
-          currentStock: Number(m.currentStock) || 0
+          currentStock: Number(m.currentStock) || 0,
+          observacao: observ,
+          imageDataUrl: getProductImageDataUrl(m.id)
         };
       });
       setRows(mapped);
@@ -185,16 +210,29 @@ export default function ProductsPage() {
       r.name || "—",
       r.code,
       (r.description || "—").slice(0, 80),
+      r.unitLabel || "—",
       r.supplierName || "—",
       r.category || "—",
-      formatBRL(r.salePrice),
+      formatPriceCell(r.salePrice),
       r.active ? "Ativo" : "Inativo",
       r.outOfStock ? "Sim" : "Não"
     ]);
 
     autoTable(doc, {
       startY: y,
-      head: [["Produto", "Codigo", "Descricao", "Fornecedor", "Categoria", "Valor", "Status", "Fora estoque"]],
+      head: [
+        [
+          "Produto",
+          "Codigo",
+          "Descricao",
+          "Unidade",
+          "Fornecedor",
+          "Categoria",
+          "Valor",
+          "Status",
+          "Fora estoque"
+        ]
+      ],
       body,
       styles: { fontSize: 7, cellPadding: 1.5 },
       headStyles: { fillColor: [30, 58, 138], textColor: 255 }
@@ -223,6 +261,7 @@ export default function ProductsPage() {
         name: "Produto",
         code: "Codigo",
         description: "Descricao",
+        unitLabel: "Unidade",
         supplierName: "Fornecedor",
         category: "Categoria",
         salePrice: "Valor",
@@ -231,7 +270,7 @@ export default function ProductsPage() {
       },
       rows.map((r) => ({
         ...r,
-        salePrice: formatBRL(r.salePrice),
+        salePrice: formatPriceCell(r.salePrice),
         active: r.active ? "Sim" : "Não",
         outOfStock: r.outOfStock ? "Sim" : "Não"
       }))
@@ -265,15 +304,18 @@ export default function ProductsPage() {
       id: r.id,
       name: r.name,
       productCode: r.code,
-      description: "",
+      description: r.observacao != null ? r.observacao : r.description !== "—" ? r.description : "",
       category: r.category,
       supplierId: r.supplierId != null ? String(r.supplierId) : "",
       currentStock: r.currentStock ?? 0,
       minStock: r.minStock ?? 0,
       active: r.active,
       unit: r.unit || "un",
-      salePrice: 0,
-      costPrice: 0
+      salePrice: r.salePrice != null ? Number(r.salePrice) : 0,
+      costPrice: r.costPrice != null ? Number(r.costPrice) : 0,
+      barcode: r.barcode || "",
+      stockLocation: r.stockLocation || "",
+      imageDataUrl: r.imageDataUrl || ""
     });
     setProductModalOpen(true);
   };
@@ -289,8 +331,14 @@ export default function ProductsPage() {
           unit: payload.unit || "un",
           minStock: Number(payload.minQuantity) || 0,
           active: payload.active !== false,
-          supplierId: payload.supplierId ?? null
+          supplierId: payload.supplierId ?? null,
+          observacao: payload.description?.trim() || null,
+          costPrice: payload.costPrice,
+          salePrice: payload.salePrice
         });
+        if (payload.imageDataUrl) {
+          setProductImageDataUrl(editingProduct.id, payload.imageDataUrl);
+        }
         setFeedback({ text: "Produto atualizado no banco.", kind: "success" });
       } else {
         const created = await createMaterial({
@@ -299,7 +347,10 @@ export default function ProductsPage() {
           unit: payload.unit || "un",
           minStock: Number(payload.minQuantity) || 0,
           active: payload.active !== false,
-          supplierId: payload.supplierId || undefined
+          supplierId: payload.supplierId || undefined,
+          observacao: payload.description?.trim() || null,
+          costPrice: payload.costPrice,
+          salePrice: payload.salePrice
         });
         const qty = Number(payload.quantity) || 0;
         if (qty > 0 && created?.id) {
@@ -309,6 +360,9 @@ export default function ProductsPage() {
             quantity: qty,
             notes: "Carga inicial de inventário"
           });
+        }
+        if (created?.id && payload.imageDataUrl) {
+          setProductImageDataUrl(created.id, payload.imageDataUrl);
         }
         setFeedback({ text: "Produto cadastrado no banco.", kind: "success" });
       }
@@ -403,6 +457,7 @@ export default function ProductsPage() {
                 <th scope="col">Produto</th>
                 <th scope="col">Código</th>
                 <th scope="col">Descrição</th>
+                <th scope="col">Unidade</th>
                 <th scope="col">Fornecedor</th>
                 <th scope="col">Categoria</th>
                 <th scope="col">Valor</th>
@@ -415,7 +470,7 @@ export default function ProductsPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <div className="products-catalog-table__empty py-5 text-center text-muted">
                       Carregando produtos...
                     </div>
@@ -426,17 +481,29 @@ export default function ProductsPage() {
                   <tr key={r.id}>
                     <td>
                       <div className="products-catalog-table__product-cell">
-                        <span className="products-catalog-table__swatch" aria-hidden>
-                          <i className="ri-archive-line" />
-                        </span>
+                        {r.imageDataUrl ? (
+                          <img
+                            className="products-catalog-table__thumb"
+                            src={r.imageDataUrl}
+                            alt=""
+                            width={40}
+                            height={40}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="products-catalog-table__swatch" aria-hidden>
+                            <i className="ri-archive-line" />
+                          </span>
+                        )}
                         <span className="products-catalog-table__product-name">{r.name}</span>
                       </div>
                     </td>
                     <td className="products-catalog-table__mono">{r.code}</td>
                     <td className="products-catalog-table__desc">{r.description}</td>
+                    <td className="products-catalog-table__mono">{r.unitLabel}</td>
                     <td className="products-catalog-table__muted">{r.supplierName}</td>
                     <td className="products-catalog-table__muted">{r.category}</td>
-                    <td className="products-catalog-table__mono">{formatBRL(r.salePrice)}</td>
+                    <td className="products-catalog-table__mono">{formatPriceCell(r.salePrice)}</td>
                     <td>
                       <span
                         className={`products-catalog-table__pill products-catalog-table__pill--${r.active ? "ativo" : "inativo"}`}
@@ -472,7 +539,7 @@ export default function ProductsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <div className="products-catalog-table__empty py-5 text-center text-muted">
                       Nenhum produto cadastrado.
                     </div>

@@ -85,10 +85,15 @@ export function mapMaterialFromApi(row, saldo) {
       minStock: 0,
       currentStock: stock,
       active: true,
-      supplierId: ""
+      supplierId: "",
+      observacao: "",
+      costPrice: null,
+      salePrice: null
     };
   }
   const fid = row.fornecedor_id;
+  const pv = row.preco_venda;
+  const pc = row.preco_custo;
   return {
     id: leanId(row),
     name: row.nome,
@@ -98,7 +103,10 @@ export function mapMaterialFromApi(row, saldo) {
     currentStock: stock,
     active: row.ativo !== false,
     supplierId:
-      fid != null && String(fid).trim() !== "" ? String(fid) : ""
+      fid != null && String(fid).trim() !== "" ? String(fid) : "",
+    observacao: row.observacao != null ? String(row.observacao) : "",
+    costPrice: pc != null && !Number.isNaN(Number(pc)) ? Number(pc) : null,
+    salePrice: pv != null && !Number.isNaN(Number(pv)) ? Number(pv) : null
   };
 }
 
@@ -128,6 +136,7 @@ export function mapSupplierFromApi(row) {
   const phone = row.telefone ?? "";
   const email = row.email ?? "";
   const id = leanId(row);
+  const contactPerson = row.nome_contato != null ? String(row.nome_contato) : "";
   return {
     id,
     name: row.nome,
@@ -135,18 +144,19 @@ export function mapSupplierFromApi(row) {
     email,
     phone,
     contact: phone || email,
-    contactPerson: "",
+    contactPerson,
     status: row.ativo === false ? "inactive" : "active",
     active: row.ativo !== false,
-    city: "",
-    state: "",
-    address: "",
-    category: "",
+    city: row.cidade != null ? String(row.cidade) : "",
+    state: row.estado != null ? String(row.estado) : "",
+    address: row.endereco != null ? String(row.endereco) : "",
+    category: row.categoria != null ? String(row.categoria) : "",
     code: id || "",
-    supplierType: "",
-    since: "",
-    paymentTerms: "",
-    notes: ""
+    supplierType: row.tipo_fornecedor != null ? String(row.tipo_fornecedor) : "",
+    since: row.data_inicio != null ? String(row.data_inicio) : "",
+    paymentTerms: row.condicoes_pagamento != null ? String(row.condicoes_pagamento) : "",
+    paymentTerms2: "",
+    notes: row.observacoes != null ? String(row.observacoes) : ""
   };
 }
 

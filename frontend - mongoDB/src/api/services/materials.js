@@ -72,6 +72,21 @@ export async function createMaterial(payload) {
     estoque_minimo: Number(payload.minStock) || 0,
     ativo: payload.active !== false
   };
+  if (payload.observacao !== undefined) {
+    body.observacao = String(payload.observacao ?? "").trim() || null;
+  }
+  if (payload.costPrice !== undefined) {
+    body.preco_custo =
+      payload.costPrice === null || payload.costPrice === ""
+        ? null
+        : Number(payload.costPrice);
+  }
+  if (payload.salePrice !== undefined) {
+    body.preco_venda =
+      payload.salePrice === null || payload.salePrice === ""
+        ? null
+        : Number(payload.salePrice);
+  }
   if (payload.supplierId != null && String(payload.supplierId).trim() !== "") {
     body.fornecedor_id = String(payload.supplierId).trim();
   }
@@ -118,6 +133,21 @@ export async function updateMaterial(id, payload) {
     unidade: payload.unit || "kg",
     estoque_minimo: Number(payload.minStock) || 0
   };
+  if (payload.observacao !== undefined) {
+    body.observacao = String(payload.observacao ?? "").trim() || null;
+  }
+  if (payload.costPrice !== undefined) {
+    body.preco_custo =
+      payload.costPrice === null || payload.costPrice === ""
+        ? null
+        : Number(payload.costPrice);
+  }
+  if (payload.salePrice !== undefined) {
+    body.preco_venda =
+      payload.salePrice === null || payload.salePrice === ""
+        ? null
+        : Number(payload.salePrice);
+  }
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
   if (payload.supplierId !== undefined) {
     body.fornecedor_id =

@@ -372,7 +372,6 @@ function SuppliersPage() {
       return [
         s.name || "—",
         formatSupplierCode(s),
-        s.contactPerson || "—",
         s.email || "—",
         s.phone || s.contact || "—",
         String(materialsBySupplier[s.id] || 0),
@@ -382,7 +381,7 @@ function SuppliersPage() {
 
     autoTable(doc, {
       startY: y,
-      head: [["Empresa", "ID", "Contato", "E-mail", "Telefone", "Produtos", "Status"]],
+      head: [["Empresa", "ID", "E-mail", "Telefone", "Produtos", "Status"]],
       body,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [29, 78, 216], textColor: 255 }
@@ -409,7 +408,6 @@ function SuppliersPage() {
       {
         name: "Empresa",
         code: "ID",
-        contactPerson: "Contato",
         email: "E-mail",
         phone: "Telefone",
         materialsCount: "Produtos",
@@ -420,7 +418,6 @@ function SuppliersPage() {
         return {
           name: s.name,
           code: formatSupplierCode(s),
-          contactPerson: s.contactPerson || "—",
           email: s.email || "—",
           phone: s.phone || s.contact || "—",
           materialsCount: materialsBySupplier[s.id] || 0,
@@ -543,7 +540,6 @@ function SuppliersPage() {
             <thead>
               <tr>
                 <th scope="col">Empresa</th>
-                <th scope="col">Contato</th>
                 <th scope="col">E-mail</th>
                 <th scope="col">Telefone</th>
                 <th scope="col" className="text-center">
@@ -558,7 +554,7 @@ function SuppliersPage() {
             <tbody>
               {isLoadingList ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={6}>
                     <div className="suppliers-data-table__empty py-5 text-center">Carregando fornecedores...</div>
                   </td>
                 </tr>
@@ -579,7 +575,6 @@ function SuppliersPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="suppliers-data-table__muted">{supplier.contactPerson || "—"}</td>
                       <td className="suppliers-data-table__muted">{supplier.email || "—"}</td>
                       <td className="suppliers-data-table__mono">{supplier.phone || supplier.contact || "—"}</td>
                       <td className="text-center suppliers-data-table__mono fw-semibold">{relatedItems}</td>
@@ -617,7 +612,7 @@ function SuppliersPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={6}>
                     <div className="suppliers-data-table__empty py-5 text-center">
                       Nenhum fornecedor cadastrado.
                     </div>

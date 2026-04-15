@@ -3,8 +3,9 @@ import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchMaterials, fetchMovements } from "@/api";
+import { fetchMaterials, fetchMovements, fetchSuppliers } from "@/api";
 import { usePermissions } from "@/context/PermissionsContext";
+import { getProductImageDataUrl } from "@/utils/productImageStorage.js";
 
 /**
  * Tela exclusiva /estoque — movimentação e níveis (estável / crítico etc.).
@@ -50,7 +51,7 @@ function formatMovementTs(value) {
 }
 
 /** Monta linhas da tela /estoque a partir de matérias-primas + movimentações. */
-function buildStockRows(materials, movements) {
+function buildStockRows(materials, movements, supplierNameById) {
   const byMat = {};
   for (const mov of movements || []) {
     const mid = mov.materialId ?? mov.materia_prima_id;
@@ -67,18 +68,25 @@ function buildStockRows(materials, movements) {
 
   return (materials || []).map((m) => {
     const agg = byMat[m.id] || {};
+    const sid = m.supplierId != null ? String(m.supplierId) : "";
+    const supplierName =
+      sid && supplierNameById && supplierNameById.has(sid)
+        ? supplierNameById.get(sid) || "—"
+        : "—";
+    const img = getProductImageDataUrl(m.id);
     return {
       id: m.id,
       name: m.name || "—",
       code: String(m.id).padStart(4, "0"),
-      supplierName: "—",
+      supplierName,
       category: m.category || "—",
       lastEntry: formatMovementTs(agg.lastIn),
       lastExit: formatMovementTs(agg.lastOut),
       purchaseValue: 0,
       unitValue: 0,
       totalStock: Number(m.currentStock) || 0,
-      stockStatus: deriveStockStatus(m.currentStock, m.minStock)
+      stockStatus: deriveStockStatus(m.currentStock, m.minStock),
+      imageDataUrl: img || ""
     };
   });
 }
@@ -95,7 +103,17 @@ function MaterialsPage() {
     setIsLoading(true);
     try {
       const [materials, movements] = await Promise.all([fetchMaterials(), fetchMovements()]);
-      setRows(buildStockRows(materials, movements));
+      let suppliersData = [];
+      try {
+        suppliersData = await fetchSuppliers();
+      } catch {
+        suppliersData = [];
+      }
+      const supplierList = (Array.isArray(suppliersData) ? suppliersData : []).filter(
+        (s) => s != null && typeof s === "object"
+      );
+      const supplierNameById = new Map(supplierList.map((s) => [String(s.id ?? ""), s.name || "—"]));
+      setRows(buildStockRows(materials, movements, supplierNameById));
     } catch (err) {
       setRows([]);
       setFeedback({
@@ -373,9 +391,20 @@ function MaterialsPage() {
                   <tr key={r.id}>
                     <td>
                       <div className="products-data-table__product-cell">
-                        <span className="products-data-table__swatch products-data-table__swatch--yellow" aria-hidden>
-                          <i className="ri-archive-line" />
-                        </span>
+                        {r.imageDataUrl ? (
+                          <img
+                            className="products-data-table__thumb"
+                            src={r.imageDataUrl}
+                            alt=""
+                            width={40}
+                            height={40}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="products-data-table__swatch products-data-table__swatch--yellow" aria-hidden>
+                            <i className="ri-archive-line" />
+                          </span>
+                        )}
                         <span className="products-data-table__product-text">
                           <span className="products-data-table__product-name">{r.name}</span>
                           <span className="products-data-table__product-code-sub">{r.code}</span>

@@ -2,17 +2,47 @@ import type { Request, Response } from "express";
 import * as svc from "../services/fornecedor.service";
 import { isValidObjectId, paramId } from "../utils/objectId";
 
+function trimOrNull(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+
+/** Campos extra: só enviados se existirem no body (evita apagar ao omitir chave). */
+function extrasFromBody(body: Record<string, unknown>, mode: "create" | "update") {
+  const keys = [
+    "nome_contato",
+    "endereco",
+    "cidade",
+    "estado",
+    "categoria",
+    "tipo_fornecedor",
+    "data_inicio",
+    "condicoes_pagamento",
+    "observacoes",
+  ] as const;
+  const out: Record<string, string | null> = {};
+  for (const k of keys) {
+    if (mode === "create" || Object.prototype.hasOwnProperty.call(body, k)) {
+      out[k] = trimOrNull(body[k]);
+    }
+  }
+  return out;
+}
+
 export async function create(req: Request, res: Response) {
   const { nome, cnpj, email, telefone, ativo } = req.body ?? {};
   if (!nome || !cnpj) {
     return res.status(400).json({ error: "Campos obrigatórios: nome, cnpj" });
   }
+  const extras = extrasFromBody((req.body ?? {}) as Record<string, unknown>, "create");
   const row = await svc.createFornecedor({
     nome,
     cnpj,
     email,
     telefone,
     ativo: ativo === undefined ? undefined : Boolean(ativo),
+    ...extras,
   });
   return res.status(201).json(row);
 }
@@ -40,12 +70,8 @@ export async function update(req: Request, res: Response) {
   if (!isValidObjectId(id)) {
     return res.status(400).json({ error: "Id inválido" });
   }
-  const data: {
-    nome?: string;
-    email?: string | null;
-    telefone?: string | null;
-    ativo?: boolean;
-  } = {};
+  const extras = extrasFromBody((req.body ?? {}) as Record<string, unknown>, "update");
+  const data: Parameters<typeof svc.updateFornecedor>[1] = { ...extras };
   if (nome !== undefined) data.nome = nome;
   if (email !== undefined) data.email = email;
   if (telefone !== undefined) data.telefone = telefone;
