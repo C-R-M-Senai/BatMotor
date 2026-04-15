@@ -67,8 +67,35 @@ const INITIAL_FULL_FORM = {
   paymentTerms: "",
   paymentTerms2: "",
   notes: "",
+  logoUrl: "",
   active: true
 };
+
+const MAX_LOGO_FILE_BYTES = 350 * 1024;
+
+function readLogoAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      reject(new Error("Selecione um arquivo de imagem (PNG, JPEG, WebP ou GIF)."));
+      return;
+    }
+    if (file.size > MAX_LOGO_FILE_BYTES) {
+      reject(new Error("Imagem muito grande. Use até ~350 KB."));
+      return;
+    }
+    const r = new FileReader();
+    r.onload = () => {
+      const dataUrl = String(r.result || "");
+      if (dataUrl.length > 480000) {
+        reject(new Error("Imagem resultante muito grande. Escolha uma imagem menor."));
+        return;
+      }
+      resolve(dataUrl);
+    };
+    r.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+    r.readAsDataURL(file);
+  });
+}
 
 function buildSavePayload(fullForm, status) {
   const { paymentTerms2, ...rest } = fullForm;
@@ -130,6 +157,7 @@ function SuppliersPage() {
   const [sinceDate, setSinceDate] = useState(null);
   const importInputRef = useRef(null);
   const docsInputRef = useRef(null);
+  const logoInputRef = useRef(null);
 
   const loadSuppliers = useCallback(async () => {
     const [suppliersData, materialsData] = await Promise.all([fetchSuppliers(), fetchMaterials()]);
@@ -247,6 +275,7 @@ function SuppliersPage() {
       paymentTerms: supplier.paymentTerms || "",
       paymentTerms2: supplier.paymentTerms2 || "",
       notes: supplier.notes || "",
+      logoUrl: supplier.logoUrl || "",
       active: supplier.active !== false && supplier.status !== "inactive"
     });
     setFormOpen(true);
@@ -524,8 +553,21 @@ function SuppliersPage() {
                     <tr key={supplier.id}>
                       <td>
                         <div className="suppliers-data-table__company">
-                          <span className="suppliers-data-table__swatch" aria-hidden>
-                            <i className="ri-building-4-line" />
+                          <span
+                            className={`suppliers-data-table__swatch${
+                              supplier.logoUrl ? " suppliers-data-table__swatch--logo" : ""
+                            }`}
+                            aria-hidden
+                          >
+                            {supplier.logoUrl ? (
+                              <img
+                                src={supplier.logoUrl}
+                                alt=""
+                                className="suppliers-data-table__logo-img"
+                              />
+                            ) : (
+                              <i className="ri-building-4-line" />
+                            )}
                           </span>
                           <div>
                             <div className="suppliers-data-table__name">{supplier.name}</div>
@@ -980,6 +1022,65 @@ function SuppliersPage() {
                     <label className="form-check-label suppliers-form__label mb-0" htmlFor="sf-active">
                       Ativo
                     </label>
+                  </div>
+                </div>
+
+                <div className="suppliers-form-section">
+                  <div className="suppliers-form-section__head">
+                    <span className="suppliers-form-section__icon" aria-hidden>
+                      <i className="ri-image-line" />
+                    </span>
+                    <h6 className="suppliers-form-section__title">Logomarca</h6>
+                  </div>
+                  <p className="suppliers-logo-section__hint small text-muted mb-3">
+                    Opcional. PNG, JPEG, WebP ou GIF — até ~350 KB.
+                  </p>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    className="d-none"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      try {
+                        const dataUrl = await readLogoAsDataUrl(file);
+                        setFullForm((p) => ({ ...p, logoUrl: dataUrl }));
+                        setFeedback({ text: "", kind: "" });
+                      } catch (err) {
+                        setFeedback({ text: String(err?.message || err), kind: "danger" });
+                      }
+                    }}
+                  />
+                  <div className="suppliers-logo-row">
+                    <div
+                      className={`suppliers-logo-preview${fullForm.logoUrl ? " suppliers-logo-preview--filled" : ""}`}
+                    >
+                      {fullForm.logoUrl ? (
+                        <img src={fullForm.logoUrl} alt="" className="suppliers-logo-preview__img" />
+                      ) : (
+                        <i className="ri-image-line suppliers-logo-preview__placeholder" aria-hidden />
+                      )}
+                    </div>
+                    <div className="suppliers-logo-row__actions">
+                      <button
+                        type="button"
+                        className="btn suppliers-docs-row__browse"
+                        onClick={() => logoInputRef.current?.click()}
+                      >
+                        Escolher imagem
+                      </button>
+                      {fullForm.logoUrl ? (
+                        <button
+                          type="button"
+                          className="btn btn-link suppliers-logo-remove p-0"
+                          onClick={() => setFullForm((p) => ({ ...p, logoUrl: "" }))}
+                        >
+                          Remover logomarca
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 

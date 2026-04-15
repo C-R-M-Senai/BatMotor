@@ -16,6 +16,7 @@ export type FornecedorExtras = {
   data_inicio?: string | null;
   condicoes_pagamento?: string | null;
   observacoes?: string | null;
+  logo_data_url?: string | null;
 };
 
 /** Insere um fornecedor; opcionais vazios viram `null`; `ativo` default `true`. */
@@ -43,6 +44,7 @@ export function createFornecedor(
     data_inicio: data.data_inicio ?? null,
     condicoes_pagamento: data.condicoes_pagamento ?? null,
     observacoes: data.observacoes ?? null,
+    logo_data_url: data.logo_data_url ?? null,
   });
 }
 

@@ -48,6 +48,7 @@ export async function createSupplier(payload) {
       since: payload.since ?? "",
       paymentTerms: payload.paymentTerms ?? "",
       notes: payload.notes ?? "",
+      logoUrl: payload.logoUrl ?? "",
       active: payload.active !== false
     };
     mockDb.suppliers.unshift(newRow);
@@ -72,6 +73,11 @@ export async function createSupplier(payload) {
     condicoes_pagamento: (payload.paymentTerms || payload.paymentTerms2 || "").trim() || null,
     observacoes: payload.notes?.trim() || null
   };
+  if (payload.logoUrl !== undefined) {
+    const u = payload.logoUrl;
+    body.logo_data_url =
+      u == null || String(u).trim() === "" ? null : String(u).trim();
+  }
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
   try {
     const { data } = await api.post("/fornecedores", body);
@@ -119,6 +125,11 @@ export async function updateSupplier(id, payload) {
     ).trim() || null;
   }
   if (payload.notes !== undefined) body.observacoes = payload.notes?.trim() || null;
+  if (payload.logoUrl !== undefined) {
+    const u = payload.logoUrl;
+    body.logo_data_url =
+      u == null || String(u).trim() === "" ? null : String(u).trim();
+  }
   try {
     const { data } = await api.put(`/fornecedores/${id}`, body);
     return mapSupplierFromApi(data);

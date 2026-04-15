@@ -13,6 +13,16 @@ function trimOrNull(v: unknown): string | null {
   return s === "" ? null : s;
 }
 
+const MAX_LOGO_DATA_URL_CHARS = 500_000;
+
+function validateLogoDataUrl(v: string | null): string | null {
+  if (v == null) return null;
+  if (v.length > MAX_LOGO_DATA_URL_CHARS) {
+    return `Logomarca excede ${MAX_LOGO_DATA_URL_CHARS.toLocaleString("pt-BR")} caracteres. Use uma imagem menor.`;
+  }
+  return null;
+}
+
 /**
  * Extrai chaves extra do body. Em **create** todas as chaves conhecidas são aplicadas;
  * em **update** só chaves presentes no body (omitir chave não força limpeza aqui).
@@ -28,6 +38,7 @@ function extrasFromBody(body: Record<string, unknown>, mode: "create" | "update"
     "data_inicio",
     "condicoes_pagamento",
     "observacoes",
+    "logo_data_url",
   ] as const;
   const out: Record<string, string | null> = {};
   for (const k of keys) {
@@ -80,6 +91,12 @@ export async function update(req: Request, res: Response) {
     return res.status(400).json({ error: "Id inválido" });
   }
   const extras = extrasFromBody((req.body ?? {}) as Record<string, unknown>, "update");
+  if (Object.prototype.hasOwnProperty.call(extras, "logo_data_url")) {
+    const logoErr = validateLogoDataUrl(extras.logo_data_url ?? null);
+    if (logoErr) {
+      return res.status(400).json({ error: logoErr });
+    }
+  }
   const data: Parameters<typeof svc.updateFornecedor>[1] = { ...extras };
   if (nome !== undefined) data.nome = nome;
   if (email !== undefined) data.email = email;

@@ -13,6 +13,52 @@
  * =============================================================================
  */
 
+/**
+ * Mongo com `.lean()` devolve `_id`; respostas após `toJSON()` no modelo usam `id`.
+ */
+export function leanId(row) {
+  if (row == null) return "";
+  if (typeof row !== "object") return "";
+  try {
+    if (row.id != null && String(row.id).trim() !== "") return String(row.id);
+    const oid = row._id;
+    if (oid != null && String(oid).trim() !== "") return String(oid);
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+/** [id do select, label] — alinhar valor guardado como label ou variação ao `value` do GlassSelect. */
+const SUPPLIER_TYPE_PAIRS = [
+  ["fabricante", "Fabricante"],
+  ["distribuidor", "Distribuidor"],
+  ["atacadista", "Atacadista"],
+  ["varejista", "Varejista"],
+  ["servicos", "Serviços"]
+];
+
+const CATEGORY_PAIRS = [
+  ["construcao", "Construção"],
+  ["eletronicos", "Eletrônicos"],
+  ["alimentos", "Alimentos"],
+  ["escritorio", "Material de escritório"],
+  ["textil", "Têxtil"],
+  ["metal", "Metal"]
+];
+
+function normalizeGlassSelectValue(raw, pairs) {
+  if (raw == null) return "";
+  const s = String(raw).trim();
+  if (s === "") return "";
+  const lower = s.toLowerCase();
+  for (const [id, label] of pairs) {
+    if (id === s || id.toLowerCase() === lower) return id;
+    if (label.toLowerCase() === lower) return id;
+  }
+  return s;
+}
+
 /** Prioridade para exibição quando o usuário tem vários perfis. */
 export function pickPrimaryBackendRole(roles) {
   const r = Array.isArray(roles) ? roles : [];
@@ -71,27 +117,61 @@ export function mapMaterialFromApi(row, saldo) {
 }
 
 export function mapSupplierFromApi(row) {
+  if (row == null || typeof row !== "object") {
+    return {
+      id: "",
+      name: "—",
+      cnpj: "",
+      email: "",
+      phone: "",
+      contact: "",
+      contactPerson: "",
+      status: "inactive",
+      active: false,
+      city: "",
+      state: "",
+      address: "",
+      category: "",
+      code: "",
+      supplierType: "",
+      since: "",
+      paymentTerms: "",
+      paymentTerms2: "",
+      notes: "",
+      logoUrl: ""
+    };
+  }
   const phone = row.telefone ?? "";
   const email = row.email ?? "";
+  const id = leanId(row);
+  const contactPerson = row.nome_contato != null ? String(row.nome_contato) : "";
+  const cond = row.condicoes_pagamento != null ? String(row.condicoes_pagamento) : "";
+  const nl = cond.indexOf("\n");
+  const paymentTerms = nl >= 0 ? cond.slice(0, nl).trim() : cond.trim();
+  const paymentTerms2 = nl >= 0 ? cond.slice(nl + 1).trim() : "";
+  const tipoRaw = row.tipo_fornecedor != null ? String(row.tipo_fornecedor) : "";
+  const catRaw = row.categoria != null ? String(row.categoria) : "";
   return {
-    id: row.id,
+    id,
     name: row.nome,
     cnpj: row.cnpj ?? "",
     email,
     phone,
     contact: phone || email,
-    contactPerson: "",
+    contactPerson,
     status: row.ativo === false ? "inactive" : "active",
     active: row.ativo !== false,
-    city: "",
-    state: "",
-    address: "",
-    category: "",
-    code: String(row.id).padStart(4, "0"),
-    supplierType: "",
-    since: "",
-    paymentTerms: "",
-    notes: ""
+    city: row.cidade != null ? String(row.cidade) : "",
+    state: row.estado != null ? String(row.estado) : "",
+    address: row.endereco != null ? String(row.endereco) : "",
+    category: normalizeGlassSelectValue(catRaw, CATEGORY_PAIRS),
+    code: id || "",
+    supplierType: normalizeGlassSelectValue(tipoRaw, SUPPLIER_TYPE_PAIRS),
+    since: row.data_inicio != null ? String(row.data_inicio) : "",
+    paymentTerms,
+    paymentTerms2,
+    notes: row.observacoes != null ? String(row.observacoes) : "",
+    logoUrl: row.logo_data_url != null ? String(row.logo_data_url) : ""
   };
 }
 

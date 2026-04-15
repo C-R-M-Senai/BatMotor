@@ -30,6 +30,36 @@ export function leanId(row) {
   return "";
 }
 
+/** [id do GlassSelect, label] — valor na BD pode ser label ou capitalização diferente. */
+const SUPPLIER_TYPE_PAIRS = [
+  ["fabricante", "Fabricante"],
+  ["distribuidor", "Distribuidor"],
+  ["atacadista", "Atacadista"],
+  ["varejista", "Varejista"],
+  ["servicos", "Serviços"]
+];
+
+const CATEGORY_PAIRS = [
+  ["construcao", "Construção"],
+  ["eletronicos", "Eletrônicos"],
+  ["alimentos", "Alimentos"],
+  ["escritorio", "Material de escritório"],
+  ["textil", "Têxtil"],
+  ["metal", "Metal"]
+];
+
+function normalizeGlassSelectValue(raw, pairs) {
+  if (raw == null) return "";
+  const s = String(raw).trim();
+  if (s === "") return "";
+  const lower = s.toLowerCase();
+  for (const [id, label] of pairs) {
+    if (id === s || id.toLowerCase() === lower) return id;
+    if (label.toLowerCase() === lower) return id;
+  }
+  return s;
+}
+
 /** Prioridade para exibição quando o usuário tem vários perfis. */
 export function pickPrimaryBackendRole(roles) {
   const r = Array.isArray(roles) ? roles : [];
@@ -130,13 +160,20 @@ export function mapSupplierFromApi(row) {
       supplierType: "",
       since: "",
       paymentTerms: "",
-      notes: ""
+      notes: "",
+      logoUrl: ""
     };
   }
   const phone = row.telefone ?? "";
   const email = row.email ?? "";
   const id = leanId(row);
   const contactPerson = row.nome_contato != null ? String(row.nome_contato) : "";
+  const cond = row.condicoes_pagamento != null ? String(row.condicoes_pagamento) : "";
+  const nl = cond.indexOf("\n");
+  const paymentTerms = nl >= 0 ? cond.slice(0, nl).trim() : cond.trim();
+  const paymentTerms2 = nl >= 0 ? cond.slice(nl + 1).trim() : "";
+  const tipoRaw = row.tipo_fornecedor != null ? String(row.tipo_fornecedor) : "";
+  const catRaw = row.categoria != null ? String(row.categoria) : "";
   return {
     id,
     name: row.nome,
@@ -150,13 +187,14 @@ export function mapSupplierFromApi(row) {
     city: row.cidade != null ? String(row.cidade) : "",
     state: row.estado != null ? String(row.estado) : "",
     address: row.endereco != null ? String(row.endereco) : "",
-    category: row.categoria != null ? String(row.categoria) : "",
+    category: normalizeGlassSelectValue(catRaw, CATEGORY_PAIRS),
     code: id || "",
-    supplierType: row.tipo_fornecedor != null ? String(row.tipo_fornecedor) : "",
+    supplierType: normalizeGlassSelectValue(tipoRaw, SUPPLIER_TYPE_PAIRS),
     since: row.data_inicio != null ? String(row.data_inicio) : "",
-    paymentTerms: row.condicoes_pagamento != null ? String(row.condicoes_pagamento) : "",
-    paymentTerms2: "",
-    notes: row.observacoes != null ? String(row.observacoes) : ""
+    paymentTerms,
+    paymentTerms2,
+    notes: row.observacoes != null ? String(row.observacoes) : "",
+    logoUrl: row.logo_data_url != null ? String(row.logo_data_url) : ""
   };
 }
 

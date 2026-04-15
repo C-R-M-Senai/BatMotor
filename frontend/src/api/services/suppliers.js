@@ -43,6 +43,7 @@ export async function createSupplier(payload) {
       since: payload.since ?? "",
       paymentTerms: payload.paymentTerms ?? "",
       notes: payload.notes ?? "",
+      logoUrl: payload.logoUrl ?? "",
       active: payload.active !== false
     };
     mockDb.suppliers.unshift(newRow);
@@ -55,6 +56,11 @@ export async function createSupplier(payload) {
     email: payload.email || undefined,
     telefone: (payload.phone || payload.contact || "").replace(/\D/g, "") || undefined
   };
+  if (payload.logoUrl !== undefined) {
+    const u = payload.logoUrl;
+    body.logo_data_url =
+      u == null || String(u).trim() === "" ? null : String(u).trim();
+  }
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
   const { data } = await api.post("/fornecedores", body);
   return mapSupplierFromApi(data);
@@ -79,6 +85,11 @@ export async function updateSupplier(id, payload) {
     body.telefone = String(payload.phone || payload.contact || "").replace(/\D/g, "") || undefined;
   }
   if (payload.active !== undefined) body.ativo = Boolean(payload.active);
+  if (payload.logoUrl !== undefined) {
+    const u = payload.logoUrl;
+    body.logo_data_url =
+      u == null || String(u).trim() === "" ? null : String(u).trim();
+  }
   const { data } = await api.put(`/fornecedores/${id}`, body);
   return mapSupplierFromApi(data);
 }

@@ -41,6 +41,7 @@ export function mockNormalizeSupplier(raw, index) {
     since: raw.since ?? "",
     paymentTerms: raw.paymentTerms ?? "",
     notes: raw.notes ?? "",
+    logoUrl: raw.logoUrl ?? "",
     active: raw.active !== false
   };
 }

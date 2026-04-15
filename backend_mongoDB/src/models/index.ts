@@ -120,6 +120,8 @@ const fornecedorSchema = new Schema(
     data_inicio: { type: String, default: null },
     condicoes_pagamento: { type: String, default: null },
     observacoes: { type: String, default: null },
+    /** Data URL da logomarca (PNG/JPEG/WebP); limite aplicado no controller. */
+    logo_data_url: { type: String, default: null },
   },
   { timestamps: false },
 );

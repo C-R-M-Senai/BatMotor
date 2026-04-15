@@ -7239,6 +7239,18 @@ body {
   background: var(--bm-accent);
 }
 
+.suppliers-data-table__swatch--logo {
+  padding: 0;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.suppliers-data-table__logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .suppliers-data-table__name {
   font-weight: 700;
   color: #0f172a;
@@ -7870,6 +7882,64 @@ button.suppliers-import-submit.btn:not(:disabled):hover {
 .suppliers-form-switch .form-check-label {
   font-weight: 600;
   color: #334155;
+}
+
+.suppliers-logo-section__hint {
+  margin-top: -0.35rem;
+}
+
+.suppliers-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.suppliers-logo-preview {
+  flex-shrink: 0;
+  width: 120px;
+  height: 120px;
+  border-radius: 14px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.suppliers-logo-preview--filled {
+  border-style: solid;
+  border-color: #e2e8f0;
+}
+
+.suppliers-logo-preview__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.suppliers-logo-preview__placeholder {
+  font-size: 2.25rem;
+  color: #94a3b8;
+}
+
+.suppliers-logo-row__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.suppliers-logo-remove {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.suppliers-logo-remove:hover {
+  color: #b91c1c;
 }
 
 .suppliers-docs-row {
