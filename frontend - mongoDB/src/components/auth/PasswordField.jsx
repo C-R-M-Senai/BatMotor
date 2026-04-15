@@ -1,3 +1,6 @@
+/**
+ * Campo de senha com alternância mostrar/ocultar e acessibilidade (`useId`).
+ */
 import { useId, useState } from "react";
 
 function PasswordField({ label, placeholder, value, onChange, required, id: idProp }) {

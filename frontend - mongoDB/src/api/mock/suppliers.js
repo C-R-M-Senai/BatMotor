@@ -1,3 +1,6 @@
+/**
+ * Helpers só para mock: códigos de fornecedor sequenciais e normalização de linhas.
+ */
 import { mockDb } from "./store.js";
 
 export function mockNextSupplierCode() {

@@ -1,3 +1,6 @@
+/**
+ * Cartões de KPI no topo do dashboard (totais formatados em pt-BR).
+ */
 function formatInt(n) {
   return Number(n || 0).toLocaleString("pt-BR");
 }

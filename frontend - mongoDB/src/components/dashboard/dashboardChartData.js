@@ -1,3 +1,6 @@
+/**
+ * Dados derivados para gráficos do dashboard (labels e séries a partir de totais agregados).
+ */
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"];
 const WEEK_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 

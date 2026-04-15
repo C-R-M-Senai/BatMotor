@@ -1,3 +1,6 @@
+/**
+ * Modal para criar/editar produto com imagem local, categoria e campos alinhados ao inventário.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExpiryDateField } from "./OrangeCalendarPopover";
 import ProductOrangeSelect from "./ProductOrangeSelect";

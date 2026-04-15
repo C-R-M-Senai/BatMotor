@@ -1,3 +1,6 @@
+/**
+ * Secção inferior do dashboard: atividades recentes e links rápidos (UI estática + dados injectados).
+ */
 import { Link } from "react-router-dom";
 
 const RECENT_ACTIVITIES = [

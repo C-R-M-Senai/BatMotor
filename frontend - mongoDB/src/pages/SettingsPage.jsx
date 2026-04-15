@@ -1,3 +1,6 @@
+/**
+ * Definições da conta: perfil, foto, preferências ligadas ao `localStorage` / API.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ACCOUNT_KIND, ADMIN_ROLES, EMPLOYEE_ROLES } from "@/constants/registerRoles";
 import { resolveAvatarUrl, resolveDisplayAvatarUrl } from "@/constants/userAvatar";

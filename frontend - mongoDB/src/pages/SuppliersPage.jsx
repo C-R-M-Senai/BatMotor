@@ -1,3 +1,6 @@
+/**
+ * CRUD de fornecedores, exportações e campos alinhados ao backend MongoDB.
+ */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";

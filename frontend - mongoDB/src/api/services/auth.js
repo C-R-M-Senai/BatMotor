@@ -1,3 +1,7 @@
+/**
+ * Autenticação: `loginRequest` chama `POST /auth/login` no modo remoto ou valida contra `mock/store`.
+ * Resposta normalizada com `normalizeAuthSuccess` (token + utilizador + roles).
+ */
 import { api, getUseMock } from "../client.js";
 import { mockDb, mockDelay } from "../mock/store.js";
 import { normalizeAuthSuccess } from "../batmotorAdapters.js";

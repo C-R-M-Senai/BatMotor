@@ -1,3 +1,7 @@
+/**
+ * Estilos globais BatMotor: import de inputs, layout #root, login fullscreen, integração com AdminLTE.
+ * Ficheiro grande — regras organizadas por secções; ver também texto.css, botao.css.
+ */
 @import "./input.CSS";
 
 /* Base do app: ocupar 100% da viewport (evita “faixa” cinza / layout deslocado por CSS do template) */

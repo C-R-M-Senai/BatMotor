@@ -1,3 +1,6 @@
+/**
+ * Badge do utilizador no cabeçalho com nome, papel e avatar resolvido.
+ */
 import { useEffect, useState } from "react";
 import { resolveAvatarUrl } from "@/constants/userAvatar";
 

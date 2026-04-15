@@ -1,5 +1,7 @@
-/** Estado em memória só para VITE_USE_MOCK=true */
-
+/**
+ * Base de dados fictícia em memória quando o frontend usa modo local (sem backend).
+ * Contém utilizadores, materiais, fornecedores, movimentos — alimenta os services em `getUseMock()`.
+ */
 export const mockDb = {
   users: [
     {

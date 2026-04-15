@@ -1,3 +1,6 @@
+/**
+ * Catálogo de produtos (UI de inventário com imagens locais e ações de exportação).
+ */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";

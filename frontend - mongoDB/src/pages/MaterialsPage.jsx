@@ -1,3 +1,6 @@
+/**
+ * Gestão de matérias-primas / insumos: tabela, filtros, export PDF/XLSX, integração com API ou mock.
+ */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";

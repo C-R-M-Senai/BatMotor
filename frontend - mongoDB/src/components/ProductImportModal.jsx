@@ -1,3 +1,6 @@
+/**
+ * Importação de produtos a partir de ficheiro (parse e pré-visualização antes de gravar).
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function formatFileSize(bytes) {

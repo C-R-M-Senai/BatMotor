@@ -1,3 +1,7 @@
+/**
+ * Mensagens de erro de respostas HTTP (Axios): extrai `error` ou `message` do body JSON
+ * e encapsula em `Error` para a UI tratar de forma uniforme.
+ */
 export function apiErrorMessage(err, fallbackMessage = "Falha na comunicação com o servidor.") {
   const data = err?.response?.data;
   if (data && typeof data.error === "string" && data.error.trim()) return data.error;
