@@ -9,6 +9,7 @@ import { formatCpfDisplay, normalizeCpfDigits } from "@/utils/cpf";
 import { downloadXlsx } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import SuppliersGlassSelect from "@/components/SuppliersGlassSelect";
+import { useHeaderSearch } from "@/context/HeaderSearchContext";
 
 const PAGE_SIZE = 8;
 
@@ -79,9 +80,9 @@ function canDeleteUserRow(user) {
 }
 
 function UsersPage() {
+  const { query: search, setQuery: setSearch } = useHeaderSearch();
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState(INITIAL_FORM);
-  const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState("all");
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [isSaving, setIsSaving] = useState(false);
@@ -176,6 +177,10 @@ function UsersPage() {
       return matchesSearch && matchesKind;
     });
   }, [kindFilter, search, users]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);

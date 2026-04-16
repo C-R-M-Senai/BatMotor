@@ -46,7 +46,11 @@ import { fetchMaterials, fetchMinStockAlerts, fetchSuppliers, loginRequest } fro
 import { clearSessionStorage } from "@/api/client";
 import { ACCOUNT_KIND } from "@/constants/registerRoles";
 import { PermissionsProvider } from "@/context/PermissionsContext";
-import { USER_AVATAR_STORAGE_KEY } from "@/constants/userAvatar";
+import { HeaderSearchProvider, useHeaderSearch } from "@/context/HeaderSearchContext";
+import {
+  loadUserAvatarFromStorage,
+  persistUserAvatarToStorage
+} from "@/constants/userAvatar";
 import PillAvatar from "./components/PillAvatar";
 import batmotorLogo from "@/assets/LOGO.svg";
 
@@ -131,8 +135,8 @@ function App() {
   const [accountKind, setAccountKind] = useState(
     () => localStorage.getItem("batmotor-account-kind") || ""
   );
-  const [userAvatar, setUserAvatar] = useState(
-    () => localStorage.getItem(USER_AVATAR_STORAGE_KEY) || ""
+  const [userAvatar, setUserAvatar] = useState(() =>
+    loadUserAvatarFromStorage(localStorage.getItem(BATMOTOR_USER_ID_KEY) || "")
   );
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem("batmotor-email") || "");
   const [headerAlertCount, setHeaderAlertCount] = useState(0);
@@ -281,11 +285,12 @@ function App() {
             setUserEmail("");
           }
         }
+        const uid = localStorage.getItem(BATMOTOR_USER_ID_KEY) || "";
         if (avatarDataUrl === null) {
-          localStorage.removeItem(USER_AVATAR_STORAGE_KEY);
+          persistUserAvatarToStorage(uid, null);
           setUserAvatar("");
         } else if (avatarDataUrl !== undefined && avatarDataUrl) {
-          localStorage.setItem(USER_AVATAR_STORAGE_KEY, avatarDataUrl);
+          persistUserAvatarToStorage(uid, avatarDataUrl);
           setUserAvatar(avatarDataUrl);
         }
       },
@@ -334,7 +339,7 @@ function App() {
     setUserEmail(localStorage.getItem("batmotor-email") || "");
     setProfileRole(localStorage.getItem("batmotor-profile-role") || "");
     setAccountKind(localStorage.getItem("batmotor-account-kind") || "");
-    setUserAvatar(localStorage.getItem(USER_AVATAR_STORAGE_KEY) || "");
+    setUserAvatar(loadUserAvatarFromStorage(localStorage.getItem(BATMOTOR_USER_ID_KEY) || ""));
   }, []);
 
   useEffect(() => {
@@ -513,6 +518,8 @@ function App() {
         element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <PermissionsProvider accountKind={accountKind}>
+            <HeaderSearchProvider>
+            <HeaderSearchResetOnNavigate />
             <div className="page-wrapper">
               <button
                 type="button"
@@ -812,6 +819,7 @@ function App() {
                 </div>
               </div>
             </div>
+            </HeaderSearchProvider>
             </PermissionsProvider>
           </ProtectedRoute>
         }

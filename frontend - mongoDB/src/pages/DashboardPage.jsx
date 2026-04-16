@@ -2,6 +2,8 @@
  * Página inicial após login: KPIs, gráficos de movimentações, alertas de stock baixo e resumo.
  */
 import { useEffect, useMemo, useState } from "react";
+import { useHeaderSearch } from "@/context/HeaderSearchContext";
+import { isGenericDashboardPanelQuery, rowMatchesQuery } from "@/utils/searchMatch.js";
 import {
   fetchMinStockAlerts,
   fetchMovimentacoesPorDia,
@@ -11,8 +13,10 @@ import {
 import DashboardKpis from "../components/dashboard/DashboardKpis";
 import DashboardChartsSection from "../components/dashboard/DashboardChartsSection";
 import DashboardBottomSection from "../components/dashboard/DashboardBottomSection";
+import DashboardMenuSearchShortcuts from "../components/dashboard/DashboardMenuSearchShortcuts";
 
 function DashboardPage() {
+  const { query: headerSearch } = useHeaderSearch();
   const [alerts, setAlerts] = useState([]);
   const [suppliersCount, setSuppliersCount] = useState(0);
   const [summary, setSummary] = useState({ totalItems: 0, totalStock: 0, byMaterial: [] });
@@ -62,11 +66,19 @@ function DashboardPage() {
     return { categoriesData, categoriesFootnote };
   }, [summary.byMaterial]);
 
+  const filteredByMaterial = useMemo(() => {
+    const rows = summary.byMaterial || [];
+    if (!headerSearch.trim()) return rows;
+    if (isGenericDashboardPanelQuery(headerSearch)) return rows;
+    return rows.filter((m) => rowMatchesQuery(headerSearch, [m.name, m.category, m.id]));
+  }, [summary.byMaterial, headerSearch]);
+
   return (
     <div className="dashboard-page dashboard-page--wide container-fluid px-0 py-0">
       <section className="dashboard-section dashboard-section--kpis">
         <DashboardKpis summary={summary} alertsCount={alerts.length} suppliersCount={suppliersCount} />
       </section>
+      <DashboardMenuSearchShortcuts />
       <section className="dashboard-section dashboard-section--charts-main">
         <DashboardChartsSection
           categoriesData={categoriesData}
@@ -76,7 +88,7 @@ function DashboardPage() {
         />
       </section>
       <section className="dashboard-section dashboard-section--bottom-panels mt-1 mb-4">
-        <DashboardBottomSection byMaterial={summary.byMaterial} />
+        <DashboardBottomSection byMaterial={filteredByMaterial} />
       </section>
     </div>
   );

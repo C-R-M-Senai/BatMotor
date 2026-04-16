@@ -8,6 +8,7 @@ import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useEffect, useMemo, useState } from "react";
 import { createMovement, fetchMaterials, fetchMovements } from "@/api";
 import { usePermissions } from "@/context/PermissionsContext";
+import { useHeaderSearch } from "@/context/HeaderSearchContext";
 import { ExpiryDateField, formatDMY, parseDMY } from "../components/OrangeCalendarPopover";
 import SuppliersGlassSelect from "@/components/SuppliersGlassSelect";
 
@@ -74,6 +75,7 @@ function movementLabel(type) {
 }
 
 function MovementsPage() {
+  const { query: headerSearch } = useHeaderSearch();
   const [materials, setMaterials] = useState([]);
   const [movements, setMovements] = useState([]);
   const [form, setForm] = useState({
@@ -150,12 +152,32 @@ function MovementsPage() {
   }, [historyRange]);
 
   const filteredHistory = useMemo(() => {
-    return movements.filter((mv) => {
+    const byDate = movements.filter((mv) => {
       if (!rangeCutoffMs) return true;
       const t = mv.createdAt ? new Date(mv.createdAt).getTime() : 0;
       return t >= rangeCutoffMs;
     });
-  }, [movements, rangeCutoffMs]);
+    const q = headerSearch.trim().toLowerCase();
+    if (!q) return byDate;
+    return byDate.filter((mv) => {
+      const mat = materialsById[mv.materialId];
+      const name = (mat?.name || "").toLowerCase();
+      const cat = String(mat?.category || "")
+        .toLowerCase();
+      const notes = String(mv.notes || "").toLowerCase();
+      const motivo = notesParts(mv.notes).motivo.toLowerCase();
+      const tipo = movementLabel(mv.type).toLowerCase();
+      const qty = String(mv.quantity ?? "");
+      return (
+        name.includes(q) ||
+        cat.includes(q) ||
+        notes.includes(q) ||
+        motivo.includes(q) ||
+        tipo.includes(q) ||
+        qty.includes(q)
+      );
+    });
+  }, [movements, rangeCutoffMs, headerSearch, materialsById]);
 
   const historyTotalPages = Math.max(1, Math.ceil(filteredHistory.length / PAGE_SIZE));
   const historySafePage = Math.min(historyPage, historyTotalPages);
@@ -171,7 +193,7 @@ function MovementsPage() {
 
   useEffect(() => {
     setHistoryPage(1);
-  }, [historyRange]);
+  }, [historyRange, headerSearch]);
 
   const onSelectMaterial = (m) => {
     setForm((prev) => ({ ...prev, materialId: m.id }));

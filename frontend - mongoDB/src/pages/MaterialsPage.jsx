@@ -8,7 +8,10 @@ import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchMaterials, fetchMovements, fetchSuppliers } from "@/api";
 import { usePermissions } from "@/context/PermissionsContext";
+import { useHeaderSearch } from "@/context/HeaderSearchContext";
 import { getProductImageDataUrl } from "@/utils/productImageStorage.js";
+import { getProductMeta } from "@/utils/productMetaStorage.js";
+import { isGenericShowAllStockQuery, rowMatchesQuery } from "@/utils/searchMatch.js";
 
 /**
  * Tela exclusiva /estoque — movimentação e níveis (estável / crítico etc.).
@@ -96,6 +99,7 @@ function buildStockRows(materials, movements, supplierNameById) {
 
 function MaterialsPage() {
   const { canManageInventory } = usePermissions();
+  const { query: headerSearch } = useHeaderSearch();
   const [rows, setRows] = useState([]);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [page, setPage] = useState(1);
@@ -116,7 +120,11 @@ function MaterialsPage() {
         (s) => s != null && typeof s === "object"
       );
       const supplierNameById = new Map(supplierList.map((s) => [String(s.id ?? ""), s.name || "—"]));
-      setRows(buildStockRows(materials, movements, supplierNameById));
+      const built = buildStockRows(materials, movements, supplierNameById).map((r) => {
+        const meta = getProductMeta(r.id);
+        return { ...r, barcode: meta.barcode || "", stockLocation: meta.stockLocation || "" };
+      });
+      setRows(built);
     } catch (err) {
       setRows([]);
       setFeedback({
@@ -132,15 +140,36 @@ function MaterialsPage() {
     void loadStock();
   }, [loadStock]);
 
+  const filteredRows = useMemo(() => {
+    if (!headerSearch.trim()) return rows;
+    if (isGenericShowAllStockQuery(headerSearch)) return rows;
+    return rows.filter((r) =>
+      rowMatchesQuery(headerSearch, [
+        r.name,
+        r.code,
+        r.supplierName,
+        r.category,
+        STOCK_STATUS_LABEL[r.stockStatus],
+        r.id,
+        r.barcode,
+        r.stockLocation
+      ])
+    );
+  }, [rows, headerSearch]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [headerSearch]);
+
   const kpiMetrics = useMemo(() => {
-    const comEstoque = rows.filter((r) => (Number(r.totalStock) || 0) > 0).length;
-    const baixo = rows.filter((r) => r.stockStatus === "instavel").length;
-    const fora = rows.filter((r) => (Number(r.totalStock) || 0) <= 0).length;
+    const comEstoque = filteredRows.filter((r) => (Number(r.totalStock) || 0) > 0).length;
+    const baixo = filteredRows.filter((r) => r.stockStatus === "instavel").length;
+    const fora = filteredRows.filter((r) => (Number(r.totalStock) || 0) <= 0).length;
     return [
       {
         key: "total",
         title: "Total de itens",
-        value: formatInt(rows.length),
+        value: formatInt(filteredRows.length),
         iconWrapClass: "dashboard-metric-v2__icon-wrap--blue",
         icon: "ri-box-3-line"
       },
@@ -166,15 +195,15 @@ function MaterialsPage() {
         icon: "ri-close-line"
       }
     ];
-  }, [rows]);
+  }, [filteredRows]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageSlice = useMemo(() => {
     const p = Math.min(page, totalPages);
     const start = (p - 1) * PAGE_SIZE;
-    return rows.slice(start, start + PAGE_SIZE);
-  }, [rows, page, totalPages]);
+    return filteredRows.slice(start, start + PAGE_SIZE);
+  }, [filteredRows, page, totalPages]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -182,7 +211,7 @@ function MaterialsPage() {
 
   const exportMaterialsPdf = async () => {
     if (!canManageInventory) return;
-    if (!rows.length) {
+    if (!filteredRows.length) {
       setFeedback({ text: "Não há itens no estoque para exportar.", kind: "info" });
       return;
     }
@@ -200,10 +229,10 @@ function MaterialsPage() {
     doc.setTextColor(0, 0, 0);
     doc.text(`Gerado em: ${ts}`, 14, y);
     y += 6;
-    doc.text(`Registros na tabela: ${rows.length}`, 14, y);
+    doc.text(`Registros na tabela: ${filteredRows.length}`, 14, y);
     y += 8;
 
-    const body = rows.map((r) => [
+    const body = filteredRows.map((r) => [
       r.name || "—",
       r.code,
       r.supplierName,
@@ -247,7 +276,7 @@ function MaterialsPage() {
 
   const exportMaterialsXlsx = async () => {
     if (!canManageInventory) return;
-    if (!rows.length) {
+    if (!filteredRows.length) {
       setFeedback({ text: "Não há dados para exportar.", kind: "info" });
       return;
     }
@@ -268,7 +297,7 @@ function MaterialsPage() {
         totalStock: "Estoque total",
         stockStatus: "Status"
       },
-      rows.map((r) => ({
+      filteredRows.map((r) => ({
         ...r,
         purchaseValue: formatBRL(r.purchaseValue),
         unitValue: formatBRL(r.unitValue),
@@ -428,6 +457,14 @@ function MaterialsPage() {
                     </td>
                   </tr>
                 ))
+              ) : rows.length > 0 && headerSearch.trim() ? (
+                <tr>
+                  <td colSpan={9}>
+                    <div className="products-data-table__empty py-5 text-center text-muted">
+                      Nenhum item corresponde à pesquisa.
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan={9}>
@@ -442,7 +479,7 @@ function MaterialsPage() {
         </div>
       </div>
 
-      {rows.length > 0 ? (
+      {filteredRows.length > 0 ? (
         <nav className="products-inventory-page__pagination" aria-label="Paginação">
           <button
             type="button"

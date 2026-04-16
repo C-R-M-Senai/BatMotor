@@ -14,6 +14,8 @@ import autoTable from "jspdf-autotable";
 import { useEffect, useMemo, useState } from "react";
 import { fetchMinStockAlerts, fetchStockSummary, sendLowStockAlertEmail } from "@/api";
 import { usePermissions } from "@/context/PermissionsContext";
+import { useHeaderSearch } from "@/context/HeaderSearchContext";
+import { rowMatchesQuery } from "@/utils/searchMatch.js";
 import { downloadXlsxWorkbook } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import "../styles/reports-page.css";
@@ -24,10 +26,10 @@ function formatInt(n) {
 
 function ReportsPage() {
   const { canManageInventory } = usePermissions();
+  const { query: search, setQuery: setSearch } = useHeaderSearch();
   const [summary, setSummary] = useState({ totalItems: 0, totalStock: 0, byMaterial: [] });
   const [alertCount, setAlertCount] = useState(0);
   const [alertRows, setAlertRows] = useState([]);
-  const [search, setSearch] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [feedback, setFeedback] = useState({ text: "", kind: "" });
   const [isLoading, setIsLoading] = useState(false);
@@ -93,17 +95,10 @@ function ReportsPage() {
   );
 
   const filteredRows = useMemo(() => {
-      const q = search.trim().toLowerCase();
       const rows = summary.byMaterial || [];
-      if (!q) return rows;
-      return rows.filter(
-        (item) =>
-          String(item.name || "")
-            .toLowerCase()
-            .includes(q) ||
-          String(item.category || "")
-            .toLowerCase()
-            .includes(q)
+      if (!search.trim()) return rows;
+      return rows.filter((item) =>
+        rowMatchesQuery(search, [item.name, item.category, item.id])
       );
     }, [summary.byMaterial, search]);
 
