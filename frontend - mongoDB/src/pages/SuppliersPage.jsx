@@ -34,8 +34,6 @@ import {
   updateSupplier
 } from "@/api";
 import { usePermissions } from "@/context/PermissionsContext";
-import { useHeaderSearch } from "@/context/HeaderSearchContext";
-import { isGenericShowAllSuppliersQuery, rowMatchesQuery } from "@/utils/searchMatch.js";
 
 const PAGE_SIZE = 8;
 
@@ -218,7 +216,6 @@ function formStateFromSupplier(supplier) {
 function SuppliersPage() {
   const location = useLocation();
   const { canManageInventory } = usePermissions();
-  const { query: headerSearch } = useHeaderSearch();
   const [suppliers, setSuppliers] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [page, setPage] = useState(1);
@@ -274,41 +271,15 @@ function SuppliersPage() {
     }, {});
   }, [materials]);
 
-  const filteredSuppliers = useMemo(() => {
-    if (!headerSearch.trim()) return suppliers;
-    if (isGenericShowAllSuppliersQuery(headerSearch)) return suppliers;
-    return suppliers.filter((s) =>
-      rowMatchesQuery(headerSearch, [
-        s.name,
-        s.cnpj,
-        s.email,
-        s.city,
-        s.state,
-        s.category,
-        s.supplierType,
-        s.contactPerson,
-        s.phone,
-        s.address,
-        s.notes,
-        s.id,
-        formatSupplierCode(s)
-      ])
-    );
-  }, [suppliers, headerSearch]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [headerSearch]);
-
   const kpiMetrics = useMemo(() => {
-    const active = filteredSuppliers.filter((s) => s.status === "active").length;
-    const inactive = filteredSuppliers.filter((s) => s.status === "inactive").length;
-    const pending = filteredSuppliers.filter((s) => s.status === "pending").length;
+    const active = suppliers.filter((s) => s.status === "active").length;
+    const inactive = suppliers.filter((s) => s.status === "inactive").length;
+    const pending = suppliers.filter((s) => s.status === "pending").length;
     return [
       {
         key: "total",
         title: "Total de fornecedores",
-        value: formatInt(filteredSuppliers.length),
+        value: formatInt(suppliers.length),
         iconWrapClass: "dashboard-metric-v2__icon-wrap--blue",
         icon: "ri-truck-line"
       },
@@ -334,16 +305,13 @@ function SuppliersPage() {
         icon: "ri-alarm-warning-line"
       }
     ];
-  }, [filteredSuppliers]);
+  }, [suppliers]);
 
-<<<<<<< HEAD
   const filteredSuppliers = useMemo(
     () => suppliers.filter((supplier) => matchesSupplierSearch(supplier, searchTerm)),
     [suppliers, searchTerm]
   );
 
-=======
->>>>>>> 374522f8609cab416cad703bda4c942cfb3818b8
   const pageCount = Math.max(1, Math.ceil(filteredSuppliers.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
 
@@ -514,7 +482,7 @@ function SuppliersPage() {
 
   const exportPdf = async () => {
     if (!canManageInventory) return;
-    if (!filteredSuppliers.length) {
+    if (!suppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
     }
@@ -532,10 +500,10 @@ function SuppliersPage() {
     doc.setTextColor(0, 0, 0);
     doc.text(`Gerado em: ${ts}`, 14, y);
     y += 6;
-    doc.text(`Total: ${filteredSuppliers.length}`, 14, y);
+    doc.text(`Total: ${suppliers.length}`, 14, y);
     y += 8;
 
-    const body = filteredSuppliers.map((s) => {
+    const body = suppliers.map((s) => {
       const st = rowStatus(s);
       return [
         s.name || "—",
@@ -564,7 +532,7 @@ function SuppliersPage() {
 
   const exportXlsx = async () => {
     if (!canManageInventory) return;
-    if (!filteredSuppliers.length) {
+    if (!suppliers.length) {
       setFeedback({ text: "Não há fornecedores para exportar.", kind: "info" });
       return;
     }
@@ -581,7 +549,7 @@ function SuppliersPage() {
         materialsCount: "Produtos",
         status: "Status"
       },
-      filteredSuppliers.map((s) => {
+      suppliers.map((s) => {
         const st = rowStatus(s);
         return {
           name: s.name,
@@ -791,14 +759,6 @@ function SuppliersPage() {
                     </tr>
                   );
                 })
-              ) : suppliers.length > 0 && headerSearch.trim() ? (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="suppliers-data-table__empty py-5 text-center">
-                      Nenhum fornecedor corresponde à pesquisa.
-                    </div>
-                  </td>
-                </tr>
               ) : (
                 <tr>
                   <td colSpan={6}>

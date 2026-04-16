@@ -46,7 +46,6 @@ import { fetchMaterials, fetchMinStockAlerts, fetchSuppliers, loginRequest } fro
 import { clearSessionStorage } from "@/api/client";
 import { ACCOUNT_KIND } from "@/constants/registerRoles";
 import { PermissionsProvider } from "@/context/PermissionsContext";
-import { HeaderSearchProvider, useHeaderSearch } from "@/context/HeaderSearchContext";
 import {
   loadUserAvatarFromStorage,
   persistUserAvatarToStorage
@@ -518,8 +517,6 @@ function App() {
         element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>
             <PermissionsProvider accountKind={accountKind}>
-            <HeaderSearchProvider>
-            <HeaderSearchResetOnNavigate />
             <div className="page-wrapper">
               <button
                 type="button"
@@ -819,7 +816,6 @@ function App() {
                 </div>
               </div>
             </div>
-            </HeaderSearchProvider>
             </PermissionsProvider>
           </ProtectedRoute>
         }
