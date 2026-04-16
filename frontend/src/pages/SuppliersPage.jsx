@@ -305,6 +305,13 @@ function SuppliersPage() {
       const existing = editingId ? suppliers.find((s) => String(s.id) === String(editingId)) : null;
       const status = resolveStatusOnSave(existing);
       const payload = buildSavePayload(fullForm, status);
+      if (editingId && existing) {
+        const nextLogo = String(payload.logoUrl ?? "");
+        const prevLogo = String(existing.logoUrl ?? "");
+        if (nextLogo === prevLogo) {
+          delete payload.logoUrl;
+        }
+      }
       if (editingId) {
         await updateSupplier(editingId, payload);
         setFeedback({ text: "Fornecedor atualizado.", kind: "success" });
@@ -317,8 +324,13 @@ function SuppliersPage() {
       }
       setFormOpen(false);
       await loadSuppliers();
-    } catch (_err) {
-      setFeedback({ text: "Não foi possível salvar o fornecedor.", kind: "danger" });
+    } catch (err) {
+      let msg = "Não foi possível salvar o fornecedor.";
+      if (err?.response?.status === 413) {
+        msg =
+          "Pedido muito grande (muitas vezes por causa da logomarca em base64). Use uma imagem mais leve ou faça deploy da API com `JSON_BODY_LIMIT` (ex.: 2mb).";
+      }
+      setFeedback({ text: msg, kind: "danger" });
     } finally {
       setIsSaving(false);
     }

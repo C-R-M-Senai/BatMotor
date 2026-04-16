@@ -71,6 +71,7 @@ export function createApp() {
    */
   app.use(
     express.json({
+      limit: process.env.JSON_BODY_LIMIT ?? "2mb",
       type: (req) => {
         const ct = (req.headers["content-type"] ?? "")
           .split(";")[0]
@@ -82,7 +83,12 @@ export function createApp() {
       },
     }),
   );
-  app.use(express.urlencoded({ extended: true }));
+  app.use(
+    express.urlencoded({
+      extended: true,
+      limit: process.env.URLENCODED_BODY_LIMIT ?? "2mb",
+    }),
+  );
 
   registerRoutes(app);
 

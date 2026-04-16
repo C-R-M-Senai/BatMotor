@@ -31,7 +31,7 @@ export {
 
 export { loginRequest } from "./services/auth.js";
 export { fetchMaterials, createMaterial, updateMaterial, deleteMaterial } from "./services/materials.js";
-export { fetchSuppliers, createSupplier, updateSupplier, deleteSupplier } from "./services/suppliers.js";
+export { fetchSuppliers, fetchSupplierById, createSupplier, updateSupplier, deleteSupplier } from "./services/suppliers.js";
 export { fetchMovements, createMovement } from "./services/movements.js";
 export {
   fetchMinStockAlerts,

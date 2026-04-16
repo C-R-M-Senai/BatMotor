@@ -6,6 +6,7 @@ import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { usePermissions } from "@/context/PermissionsContext";
 import AddProductModal from "../components/AddProductModal";
 import {
@@ -55,11 +56,29 @@ function formatPriceCell(n) {
   return formatBRL(v);
 }
 
+function matchesProductSearch(row, rawSearch) {
+  const q = String(rawSearch || "").trim().toLowerCase();
+  if (!q) return true;
+  const fields = [
+    row?.name,
+    row?.code,
+    row?.description,
+    row?.unitLabel,
+    row?.supplierName,
+    row?.category,
+    row?.barcode,
+    row?.stockLocation,
+    row?.observacao
+  ];
+  return fields.some((value) => String(value ?? "").toLowerCase().includes(q));
+}
+
 /**
  * Tela exclusiva /produtos — layout referência “Inventário de produtos” (cadastro, ativo/inativo, ações).
  * Não compartilha estado com /estoque (MaterialsPage).
  */
 export default function ProductsPage() {
+  const location = useLocation();
   const { canManageInventory } = usePermissions();
   const [rows, setRows] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -69,6 +88,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const searchTerm = useMemo(() => new URLSearchParams(location.search).get("search") || "", [location.search]);
 
   const loadRows = useCallback(async () => {
     setIsLoading(true);
@@ -167,17 +187,23 @@ export default function ProductsPage() {
     ];
   }, [rows]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const filteredRows = useMemo(() => rows.filter((row) => matchesProductSearch(row, searchTerm)), [rows, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageSlice = useMemo(() => {
     const p = Math.min(page, totalPages);
     const start = (p - 1) * PAGE_SIZE;
-    return rows.slice(start, start + PAGE_SIZE);
-  }, [rows, page, totalPages]);
+    return filteredRows.slice(start, start + PAGE_SIZE);
+  }, [filteredRows, page, totalPages]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   useEffect(() => {
     if (!canManageInventory) {
@@ -544,7 +570,7 @@ export default function ProductsPage() {
                 <tr>
                   <td colSpan={9}>
                     <div className="products-catalog-table__empty py-5 text-center text-muted">
-                      Nenhum produto cadastrado.
+                      {searchTerm ? "Nenhum produto encontrado para essa busca." : "Nenhum produto cadastrado."}
                     </div>
                   </td>
                 </tr>
@@ -554,7 +580,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {rows.length > 0 ? (
+      {filteredRows.length > 0 ? (
         <nav className="products-catalog-page__pagination" aria-label="Paginação">
           <button
             type="button"

@@ -84,8 +84,7 @@ export function clearSessionStorage() {
     "batmotor-user-id",
     "batmotor-account-kind",
     "batmotor-profile-role",
-    "batmotor-email",
-    "batmotor-user-avatar"
+    "batmotor-email"
   ];
   try {
     keys.forEach((k) => localStorage.removeItem(k));

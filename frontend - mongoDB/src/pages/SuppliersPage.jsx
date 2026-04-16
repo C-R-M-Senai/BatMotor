@@ -6,6 +6,7 @@ import autoTable from "jspdf-autotable";
 import { downloadXlsx } from "@/utils/exportXlsx";
 import { addBatmotorPdfHeader } from "@/utils/batmotorExportBrand";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import SuppliersGlassSelect from "../components/SuppliersGlassSelect";
 import { ExpiryDateField, formatDMY, parseDMY } from "../components/OrangeCalendarPopover";
 
@@ -28,6 +29,7 @@ import {
   createSupplier,
   deleteSupplier,
   fetchMaterials,
+  fetchSupplierById,
   fetchSuppliers,
   updateSupplier
 } from "@/api";
@@ -98,14 +100,44 @@ function readLogoAsDataUrl(file) {
 }
 
 function buildSavePayload(fullForm, status) {
-  const { paymentTerms2, ...rest } = fullForm;
   return {
-    ...rest,
+    ...fullForm,
     name: fullForm.name.trim(),
-    paymentTerms: fullForm.paymentTerms || paymentTerms2 || "",
+    paymentTerms: String(fullForm.paymentTerms || "").trim(),
+    paymentTerms2: String(fullForm.paymentTerms2 || "").trim(),
     status,
     active: fullForm.active
   };
+}
+
+function buildUpdatePayload(fullForm, originalFullForm) {
+  const fields = [
+    "name",
+    "cnpj",
+    "supplierType",
+    "category",
+    "since",
+    "contactPerson",
+    "email",
+    "phone",
+    "address",
+    "city",
+    "state",
+    "paymentTerms",
+    "paymentTerms2",
+    "notes",
+    "logoUrl",
+    "active"
+  ];
+  const payload = {};
+  for (const field of fields) {
+    const nextValue = fullForm?.[field] ?? "";
+    const prevValue = originalFullForm?.[field] ?? "";
+    if (nextValue !== prevValue) {
+      payload[field] = nextValue;
+    }
+  }
+  return payload;
 }
 
 function formatInt(n) {
@@ -140,7 +172,49 @@ function pillClassForTone(tone) {
   return "suppliers-table__pill suppliers-table__pill--pendente";
 }
 
+function matchesSupplierSearch(supplier, rawSearch) {
+  const q = String(rawSearch || "").trim().toLowerCase();
+  if (!q) return true;
+  const fields = [
+    supplier?.name,
+    supplier?.cnpj,
+    supplier?.email,
+    supplier?.phone,
+    supplier?.contact,
+    supplier?.contactPerson,
+    supplier?.address,
+    supplier?.city,
+    supplier?.state,
+    supplier?.category,
+    supplier?.supplierType,
+    supplier?.code
+  ];
+  return fields.some((value) => String(value ?? "").toLowerCase().includes(q));
+}
+
+function formStateFromSupplier(supplier) {
+  return {
+    name: supplier?.name || "",
+    cnpj: supplier?.cnpj || "",
+    supplierType: supplier?.supplierType || "",
+    category: supplier?.category || "",
+    since: supplier?.since || "",
+    contactPerson: supplier?.contactPerson || "",
+    email: supplier?.email || "",
+    phone: supplier?.phone || "",
+    address: supplier?.address || "",
+    city: supplier?.city || "",
+    state: supplier?.state || "",
+    paymentTerms: supplier?.paymentTerms || "",
+    paymentTerms2: supplier?.paymentTerms2 || "",
+    notes: supplier?.notes || "",
+    logoUrl: supplier?.logoUrl || "",
+    active: supplier?.active !== false && supplier?.status !== "inactive"
+  };
+}
+
 function SuppliersPage() {
+  const location = useLocation();
   const { canManageInventory } = usePermissions();
   const [suppliers, setSuppliers] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -154,8 +228,10 @@ function SuppliersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [fullForm, setFullForm] = useState(INITIAL_FULL_FORM);
+  const [originalFullForm, setOriginalFullForm] = useState(null);
   const [sinceStr, setSinceStr] = useState("");
   const [sinceDate, setSinceDate] = useState(null);
+  const searchTerm = useMemo(() => new URLSearchParams(location.search).get("search") || "", [location.search]);
   const importInputRef = useRef(null);
   const docsInputRef = useRef(null);
   const logoInputRef = useRef(null);
@@ -231,17 +307,26 @@ function SuppliersPage() {
     ];
   }, [suppliers]);
 
-  const pageCount = Math.max(1, Math.ceil(suppliers.length / PAGE_SIZE));
+  const filteredSuppliers = useMemo(
+    () => suppliers.filter((supplier) => matchesSupplierSearch(supplier, searchTerm)),
+    [suppliers, searchTerm]
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filteredSuppliers.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
 
   const paginatedSuppliers = useMemo(() => {
     const start = (safePage - 1) * PAGE_SIZE;
-    return suppliers.slice(start, start + PAGE_SIZE);
-  }, [suppliers, safePage]);
+    return filteredSuppliers.slice(start, start + PAGE_SIZE);
+  }, [filteredSuppliers, safePage]);
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   useEffect(() => {
     if (!canManageInventory) {
@@ -267,39 +352,40 @@ function SuppliersPage() {
     if (!canManageInventory) return;
     setEditingId(null);
     setFullForm({ ...INITIAL_FULL_FORM, active: true });
+    setOriginalFullForm(null);
     setSinceStr("");
     setSinceDate(null);
     setFormOpen(true);
     setFeedback({ text: "", kind: "" });
   };
 
-  const openEditModal = (supplier) => {
-    if (!canManageInventory) return;
-    setEditingId(supplier.id);
-    const iso = (supplier.since || "").trim();
+  const applySupplierToForm = useCallback((supplier) => {
+    const iso = String(supplier?.since || "").trim();
     const dt = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? dateFromIso(iso) : null;
+    const nextForm = formStateFromSupplier(supplier);
     setSinceDate(dt);
     setSinceStr(dt ? formatDMY(dt) : "");
-    setFullForm({
-      name: supplier.name || "",
-      cnpj: supplier.cnpj || "",
-      supplierType: supplier.supplierType || "",
-      category: supplier.category || "",
-      since: supplier.since || "",
-      contactPerson: supplier.contactPerson || "",
-      email: supplier.email || "",
-      phone: supplier.phone || "",
-      address: supplier.address || "",
-      city: supplier.city || "",
-      state: supplier.state || "",
-      paymentTerms: supplier.paymentTerms || "",
-      paymentTerms2: supplier.paymentTerms2 || "",
-      notes: supplier.notes || "",
-      logoUrl: supplier.logoUrl || "",
-      active: supplier.active !== false && supplier.status !== "inactive"
-    });
+    setFullForm(nextForm);
+    setOriginalFullForm(nextForm);
     setFormOpen(true);
+  }, []);
+
+  const openEditModal = async (supplier) => {
+    if (!canManageInventory) return;
+    setEditingId(supplier.id);
     setFeedback({ text: "", kind: "" });
+    try {
+      const freshSupplier = await fetchSupplierById(supplier.id);
+      applySupplierToForm(freshSupplier);
+    } catch (err) {
+      applySupplierToForm(supplier);
+      const msg =
+        err?.response?.data?.error ?? err?.message ?? "Não foi possível recarregar os dados do fornecedor.";
+      setFeedback({
+        text: `Não foi possível buscar os dados atualizados no banco. O formulário foi aberto com os dados da lista. ${msg}`,
+        kind: "warning"
+      });
+    }
   };
 
   const resolveStatusOnSave = (existing) => {
@@ -310,6 +396,7 @@ function SuppliersPage() {
 
   const handleSaveFull = async (e) => {
     e.preventDefault();
+    const isCreating = !editingId;
     if (!canManageInventory) {
       setFeedback({
         text: "Apenas administrador ou gerente pode cadastrar ou editar fornecedores.",
@@ -317,20 +404,32 @@ function SuppliersPage() {
       });
       return;
     }
-    if (!fullForm.name?.trim()) {
+    if (isCreating && !fullForm.name?.trim()) {
       setFeedback({ text: "Informe o nome do fornecedor.", kind: "danger" });
       return;
     }
     const cnpjDigits = String(fullForm.cnpj || "").replace(/\D/g, "");
-    if (cnpjDigits.length !== 14) {
+    if (isCreating && cnpjDigits.length !== 14) {
       setFeedback({
         text: "Informe um CNPJ válido com 14 dígitos (podes colar com pontos e traços).",
         kind: "danger"
       });
       return;
     }
-    if (!fullForm.supplierType?.trim()) {
+    if (isCreating && !fullForm.supplierType?.trim()) {
       setFeedback({ text: "Selecione o tipo de fornecedor.", kind: "danger" });
+      return;
+    }
+    if (isCreating && !fullForm.contactPerson?.trim()) {
+      setFeedback({ text: "Informe a pessoa de contato.", kind: "danger" });
+      return;
+    }
+    if (isCreating && !fullForm.email?.trim()) {
+      setFeedback({ text: "Informe o e-mail do fornecedor.", kind: "danger" });
+      return;
+    }
+    if (isCreating && !fullForm.phone?.trim()) {
+      setFeedback({ text: "Informe o telefone do fornecedor.", kind: "danger" });
       return;
     }
     setIsSaving(true);
@@ -338,11 +437,12 @@ function SuppliersPage() {
     try {
       const existing = editingId ? suppliers.find((s) => String(s.id) === String(editingId)) : null;
       const status = resolveStatusOnSave(existing);
-      const payload = buildSavePayload(fullForm, status);
       if (editingId) {
+        const payload = buildUpdatePayload(fullForm, originalFullForm);
         await updateSupplier(editingId, payload);
         setFeedback({ text: "Fornecedor atualizado.", kind: "success" });
       } else {
+        const payload = buildSavePayload(fullForm, status);
         await createSupplier({
           ...payload,
           status: fullForm.active ? "pending" : "inactive"
@@ -357,6 +457,10 @@ function SuppliersPage() {
       let msg = str || "Não foi possível salvar o fornecedor.";
       if (/11000|duplicate|E11000/i.test(str) || /dup key/i.test(str)) {
         msg = "Este CNPJ já está cadastrado no sistema.";
+      }
+      if (err?.response?.status === 413) {
+        msg =
+          "Pedido muito grande (muitas vezes por causa da logomarca em base64). Use uma imagem mais leve ou faça deploy da API com `JSON_BODY_LIMIT` (ex.: 2mb).";
       }
       setFeedback({ text: msg, kind: "danger" });
     } finally {
@@ -659,7 +763,7 @@ function SuppliersPage() {
                 <tr>
                   <td colSpan={6}>
                     <div className="suppliers-data-table__empty py-5 text-center">
-                      Nenhum fornecedor cadastrado.
+                      {searchTerm ? "Nenhum fornecedor encontrado para essa busca." : "Nenhum fornecedor cadastrado."}
                     </div>
                   </td>
                 </tr>
@@ -669,7 +773,7 @@ function SuppliersPage() {
         </div>
       </div>
 
-      {suppliers.length > 0 ? (
+      {filteredSuppliers.length > 0 ? (
         <nav className="suppliers-page__pagination" aria-label="Paginação">
           <button
             type="button"
@@ -802,7 +906,7 @@ function SuppliersPage() {
               </button>
             </div>
             <div className="suppliers-form-modal__body">
-              <form className="suppliers-form" onSubmit={handleSaveFull}>
+              <form className="suppliers-form" onSubmit={handleSaveFull} noValidate>
                 <div className="row g-4">
                   <div className="col-lg-6">
                     <div className="suppliers-form-section">
@@ -822,7 +926,7 @@ function SuppliersPage() {
                           placeholder="Ex.: Materiais de Construção Ltda"
                           value={fullForm.name}
                           onChange={(e) => setFullForm((p) => ({ ...p, name: e.target.value }))}
-                          required
+                          required={!editingId}
                         />
                       </div>
                       <div className="suppliers-form__field">
@@ -849,7 +953,7 @@ function SuppliersPage() {
                           onChange={(v) => setFullForm((p) => ({ ...p, supplierType: v }))}
                           options={SUPPLIER_TYPE_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
                           placeholder="Selecione um tipo"
-                          required
+                          required={!editingId}
                         />
                       </div>
                       <div className="suppliers-form__field">
@@ -915,7 +1019,7 @@ function SuppliersPage() {
                           placeholder="Ex.: João Silva"
                           value={fullForm.contactPerson}
                           onChange={(e) => setFullForm((p) => ({ ...p, contactPerson: e.target.value }))}
-                          required
+                          required={!editingId}
                         />
                       </div>
                       <div className="suppliers-form__field">
@@ -929,7 +1033,7 @@ function SuppliersPage() {
                           placeholder="contato@fornecedor.com"
                           value={fullForm.email}
                           onChange={(e) => setFullForm((p) => ({ ...p, email: e.target.value }))}
-                          required
+                          required={!editingId}
                         />
                       </div>
                       <div className="suppliers-form__field">
@@ -942,7 +1046,7 @@ function SuppliersPage() {
                           placeholder="+55 (99) 9 9999-9999"
                           value={fullForm.phone}
                           onChange={(e) => setFullForm((p) => ({ ...p, phone: e.target.value }))}
-                          required
+                          required={!editingId}
                         />
                       </div>
                       <div className="suppliers-form__field">

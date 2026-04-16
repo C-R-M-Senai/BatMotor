@@ -32,7 +32,7 @@
  * =============================================================================
  */
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import DashboardPage from "./pages/DashboardPage";
 import MaterialsPage from "./pages/MaterialsPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -42,7 +42,7 @@ import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
 import UsersPage from "./pages/UsersPage";
 import LoginPage from "./pages/auth/LoginPage";
-import { fetchMinStockAlerts, loginRequest } from "@/api";
+import { fetchMaterials, fetchMinStockAlerts, fetchSuppliers, loginRequest } from "@/api";
 import { clearSessionStorage } from "@/api/client";
 import { ACCOUNT_KIND } from "@/constants/registerRoles";
 import { PermissionsProvider } from "@/context/PermissionsContext";
@@ -91,6 +91,30 @@ function roleLabel(accountKind) {
   return "—";
 }
 
+const SEARCHABLE_PAGES = [
+  { path: "/", title: "Painel", keywords: ["dashboard", "inicio", "home", "resumo", "painel"] },
+  { path: "/produtos", title: "Produtos", keywords: ["produto", "cadastro de produto", "catalogo"] },
+  { path: "/estoque", title: "Estoque", keywords: ["materiais", "materia prima", "inventario", "armazenamento"] },
+  { path: "/fornecedores", title: "Fornecedores", keywords: ["fornecedor", "compras", "parceiros"] },
+  { path: "/movimentacoes", title: "Movimentações", keywords: ["movimentacao", "entrada", "saida", "ajuste"] },
+  { path: "/relatorios", title: "Relatórios", keywords: ["relatorio", "alertas", "email", "compras"] },
+  { path: "/sistema", title: "Sistema", keywords: ["configuracoes", "ajustes", "preferencias"] },
+  { path: "/usuarios", title: "Usuários", keywords: ["usuario", "colaboradores", "equipe", "acessos"] }
+];
+
+function normalizeSearchText(v) {
+  return String(v ?? "").trim().toLowerCase();
+}
+
+function productCodeFromId(id) {
+  return `PRD-${String(id || "").slice(-6).toUpperCase()}`;
+}
+
+function includesSearch(targets, query) {
+  if (!query) return false;
+  return targets.some((value) => normalizeSearchText(value).includes(query));
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -113,6 +137,11 @@ function App() {
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem("batmotor-email") || "");
   const [headerAlertCount, setHeaderAlertCount] = useState(0);
   const [sessionNotice, setSessionNotice] = useState("");
+  const [headerSearch, setHeaderSearch] = useState("");
+  const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
+  const headerSearchRef = useRef(null);
+  const [searchProducts, setSearchProducts] = useState([]);
+  const [searchSuppliers, setSearchSuppliers] = useState([]);
 
   const headerPageTitle = useMemo(() => {
     const p = location.pathname;
@@ -128,6 +157,74 @@ function App() {
     };
     return p in titles ? titles[p] : "Painel";
   }, [location.pathname]);
+
+  const headerSearchResults = useMemo(() => {
+    const raw = headerSearch.trim();
+    const q = raw.toLowerCase();
+    if (!q) return [];
+    const pageResults = SEARCHABLE_PAGES.filter((page) => {
+      if (page.title.toLowerCase().includes(q)) return true;
+      return page.keywords.some((kw) => kw.toLowerCase().includes(q));
+    })
+      .slice(0, 3)
+      .map((page) => ({
+        kind: "page",
+        title: page.title,
+        subtitle: "Página do sistema",
+        path: page.path
+      }));
+
+    const productResults = searchProducts
+      .filter((item) =>
+        includesSearch(
+          [
+            item.name,
+            item.code,
+            item.category,
+            item.supplierName,
+            item.description,
+            item.barcode,
+            item.stockLocation
+          ],
+          q
+        )
+      )
+      .slice(0, 4)
+      .map((item) => ({
+        kind: "product",
+        title: item.name,
+        subtitle: `${item.code} · ${item.supplierName || "Sem fornecedor"}`,
+        path: "/produtos",
+        query: raw
+      }));
+
+    const supplierResults = searchSuppliers
+      .filter((item) =>
+        includesSearch(
+          [
+            item.name,
+            item.code,
+            item.cnpj,
+            item.email,
+            item.phone,
+            item.contactPerson,
+            item.category,
+            item.supplierType
+          ],
+          q
+        )
+      )
+      .slice(0, 4)
+      .map((item) => ({
+        kind: "supplier",
+        title: item.name,
+        subtitle: `${item.cnpj || "Sem CNPJ"} · ${item.phone || item.email || "Sem contato"}`,
+        path: "/fornecedores",
+        query: raw
+      }));
+
+    return [...pageResults, ...productResults, ...supplierResults].slice(0, 8);
+  }, [headerSearch, searchProducts, searchSuppliers]);
 
   const applySessionFromLogin = useMemo(
     () => (result) => {
@@ -161,6 +258,7 @@ function App() {
         localStorage.removeItem("batmotor-profile-role");
       }
       setProfileRole(pr);
+      setUserAvatar(localStorage.getItem(USER_AVATAR_STORAGE_KEY) || "");
     },
     []
   );
@@ -215,7 +313,7 @@ function App() {
         clearSessionStorage();
         setProfileRole("");
         setAccountKind("");
-        setUserAvatar("");
+        setUserAvatar(localStorage.getItem(USER_AVATAR_STORAGE_KEY) || "");
         setUserEmail("");
         setIsAuthenticated(false);
         navigate("/login");
@@ -265,6 +363,22 @@ function App() {
   }, [location.pathname]);
 
   useEffect(() => {
+    setHeaderSearch("");
+    setHeaderSearchOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!headerSearchOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (headerSearchRef.current && !headerSearchRef.current.contains(event.target)) {
+        setHeaderSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [headerSearchOpen]);
+
+  useEffect(() => {
     if (!isAuthenticated) {
       setHeaderAlertCount(0);
       return undefined;
@@ -276,6 +390,58 @@ function App() {
       })
       .catch(() => {
         if (!cancelled) setHeaderAlertCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, location.pathname]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSearchProducts([]);
+      setSearchSuppliers([]);
+      return undefined;
+    }
+    let cancelled = false;
+    Promise.all([fetchMaterials(), fetchSuppliers()])
+      .then(([materials, suppliers]) => {
+        if (cancelled) return;
+        const supplierList = (Array.isArray(suppliers) ? suppliers : []).filter((s) => s && typeof s === "object");
+        const supplierById = new Map(supplierList.map((s) => [String(s.id ?? ""), s]));
+        setSearchSuppliers(
+          supplierList.map((s) => ({
+            id: String(s.id ?? ""),
+            name: s.name || "—",
+            code: String(s.code || s.id || ""),
+            cnpj: s.cnpj || "",
+            email: s.email || "",
+            phone: s.phone || s.contact || "",
+            contactPerson: s.contactPerson || "",
+            category: s.category || "",
+            supplierType: s.supplierType || ""
+          }))
+        );
+        setSearchProducts(
+          (Array.isArray(materials) ? materials : []).map((m) => {
+            const sid = m.supplierId != null ? String(m.supplierId) : "";
+            const supplierName = sid && supplierById.has(sid) ? supplierById.get(sid)?.name || "—" : "—";
+            return {
+              id: String(m.id ?? ""),
+              name: m.name || "—",
+              code: String(m.productCode || productCodeFromId(m.id)),
+              category: m.category || "",
+              supplierName,
+              description: m.observacao || "",
+              barcode: m.barcode || "",
+              stockLocation: m.stockLocation || ""
+            };
+          })
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSearchProducts([]);
+        setSearchSuppliers([]);
       });
     return () => {
       cancelled = true;
@@ -307,6 +473,26 @@ function App() {
       ensureTemplateStylesheet();
     }
   }, [location.pathname]);
+
+  const runHeaderSearch = useMemo(
+    () => (target) => {
+      const result = target && typeof target === "object" ? target : null;
+      const value = String(result?.query ?? target ?? headerSearch).trim().toLowerCase();
+      if (!value) return;
+      const next = result || headerSearchResults[0];
+      if (!next) return;
+      setHeaderSearch("");
+      setHeaderSearchOpen(false);
+      if (next.kind === "page") {
+        navigate(next.path);
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set("search", String(next.query || headerSearch).trim());
+      navigate(`${next.path}?${params.toString()}`);
+    },
+    [headerSearch, headerSearchResults, navigate]
+  );
 
   return (
     <Routes>
@@ -496,14 +682,56 @@ function App() {
                         <h1 className="app-header-overview__title">{headerPageTitle}</h1>
                       </div>
                       <div className="app-header-overview__right">
-                        <div className="app-header-search-pill">
-                          <i className="ri-search-line app-header-search-pill__icon" aria-hidden />
-                          <input
-                            type="search"
-                            className="app-header-search-pill__input"
-                            placeholder="Pesquisar"
-                            aria-label="Pesquisar no painel"
-                          />
+                        <div className="app-header-search-wrap" ref={headerSearchRef}>
+                          <form
+                            className="app-header-search-pill"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              runHeaderSearch();
+                            }}
+                          >
+                            <i className="ri-search-line app-header-search-pill__icon" aria-hidden />
+                            <input
+                              type="search"
+                              className="app-header-search-pill__input"
+                              placeholder="Pesquisar página ou área"
+                              aria-label="Pesquisar páginas do sistema"
+                              value={headerSearch}
+                              onChange={(e) => {
+                                setHeaderSearch(e.target.value);
+                                setHeaderSearchOpen(true);
+                              }}
+                              onFocus={() => {
+                                if (headerSearch.trim()) setHeaderSearchOpen(true);
+                              }}
+                            />
+                          </form>
+                          {headerSearchOpen && headerSearch.trim() ? (
+                            <div className="app-header-search-results" role="listbox" aria-label="Sugestões de páginas">
+                              {headerSearchResults.length ? (
+                                headerSearchResults.map((page) => (
+                                  <button
+                                    key={`${page.kind}-${page.path}-${page.title}`}
+                                    type="button"
+                                    className="app-header-search-results__item"
+                                    onClick={() => runHeaderSearch(page)}
+                                  >
+                                    <span>
+                                      <span className="app-header-search-results__title">{page.title}</span>
+                                      <span className="app-header-search-results__subtitle">{page.subtitle}</span>
+                                    </span>
+                                    <span className="app-header-search-results__path">
+                                      {page.kind === "page" ? page.path : page.kind === "product" ? "Produto" : "Fornecedor"}
+                                    </span>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="app-header-search-results__empty">
+                                  Nenhuma página encontrada.
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                         <div className="d-flex align-items-center gap-1 flex-shrink-0">
                           <div className="app-header-icon-slot">

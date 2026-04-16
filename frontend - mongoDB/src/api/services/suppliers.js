@@ -7,6 +7,13 @@ import { mockNormalizeSupplier, mockNextSupplierCode } from "../mock/suppliers.j
 import { mapSupplierFromApi } from "../batmotorAdapters.js";
 import { toApiError } from "./errors.js";
 
+function combinePaymentTerms(payload) {
+  const terms = [payload.paymentTerms, payload.paymentTerms2]
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean);
+  return terms.length ? terms.join("\n") : null;
+}
+
 export async function fetchSuppliers() {
   if (getUseMock()) {
     await mockDelay();
@@ -18,6 +25,21 @@ export async function fetchSuppliers() {
     return list.map(mapSupplierFromApi);
   } catch (e) {
     throw toApiError(e, "Não foi possível carregar a lista de fornecedores.");
+  }
+}
+
+export async function fetchSupplierById(id) {
+  if (getUseMock()) {
+    await mockDelay();
+    const i = mockDb.suppliers.findIndex((s) => String(s.id) === String(id));
+    if (i === -1) throw new Error("Fornecedor nao encontrado");
+    return mockNormalizeSupplier(mockDb.suppliers[i], i);
+  }
+  try {
+    const { data } = await api.get(`/fornecedores/${id}`);
+    return mapSupplierFromApi(data);
+  } catch (e) {
+    throw toApiError(e, "Não foi possível carregar os dados do fornecedor.");
   }
 }
 
@@ -70,7 +92,7 @@ export async function createSupplier(payload) {
     categoria: payload.category?.trim() || null,
     tipo_fornecedor: payload.supplierType?.trim() || null,
     data_inicio: payload.since?.trim() || null,
-    condicoes_pagamento: (payload.paymentTerms || payload.paymentTerms2 || "").trim() || null,
+    condicoes_pagamento: combinePaymentTerms(payload),
     observacoes: payload.notes?.trim() || null
   };
   if (payload.logoUrl !== undefined) {
@@ -118,11 +140,7 @@ export async function updateSupplier(id, payload) {
   }
   if (payload.since !== undefined) body.data_inicio = payload.since?.trim() || null;
   if (payload.paymentTerms !== undefined || payload.paymentTerms2 !== undefined) {
-    body.condicoes_pagamento = (
-      payload.paymentTerms ||
-      payload.paymentTerms2 ||
-      ""
-    ).trim() || null;
+    body.condicoes_pagamento = combinePaymentTerms(payload);
   }
   if (payload.notes !== undefined) body.observacoes = payload.notes?.trim() || null;
   if (payload.logoUrl !== undefined) {

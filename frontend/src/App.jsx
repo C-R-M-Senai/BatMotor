@@ -32,7 +32,7 @@
  * =============================================================================
  */
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import DashboardPage from "./pages/DashboardPage";
 import MaterialsPage from "./pages/MaterialsPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -90,6 +90,17 @@ function roleLabel(accountKind) {
   return "—";
 }
 
+const SEARCHABLE_PAGES = [
+  { path: "/", title: "Painel", keywords: ["dashboard", "inicio", "home", "resumo", "painel"] },
+  { path: "/produtos", title: "Produtos", keywords: ["produto", "cadastro de produto", "catalogo"] },
+  { path: "/estoque", title: "Estoque", keywords: ["materiais", "materia prima", "inventario", "armazenamento"] },
+  { path: "/fornecedores", title: "Fornecedores", keywords: ["fornecedor", "compras", "parceiros"] },
+  { path: "/movimentacoes", title: "Movimentações", keywords: ["movimentacao", "entrada", "saida", "ajuste"] },
+  { path: "/relatorios", title: "Relatórios", keywords: ["relatorio", "alertas", "email", "compras"] },
+  { path: "/sistema", title: "Sistema", keywords: ["configuracoes", "ajustes", "preferencias"] },
+  { path: "/usuarios", title: "Usuários", keywords: ["usuario", "colaboradores", "equipe", "acessos"] }
+];
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -111,6 +122,9 @@ function App() {
   );
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem("batmotor-email") || "");
   const [headerAlertCount, setHeaderAlertCount] = useState(0);
+  const [headerSearch, setHeaderSearch] = useState("");
+  const [headerSearchOpen, setHeaderSearchOpen] = useState(false);
+  const headerSearchRef = useRef(null);
 
   const headerPageTitle = useMemo(() => {
     const p = location.pathname;
@@ -126,6 +140,15 @@ function App() {
     };
     return p in titles ? titles[p] : "Painel";
   }, [location.pathname]);
+
+  const headerSearchResults = useMemo(() => {
+    const q = headerSearch.trim().toLowerCase();
+    if (!q) return [];
+    return SEARCHABLE_PAGES.filter((page) => {
+      if (page.title.toLowerCase().includes(q)) return true;
+      return page.keywords.some((kw) => kw.toLowerCase().includes(q));
+    }).slice(0, 6);
+  }, [headerSearch]);
 
   const applySessionFromLogin = useMemo(
     () => (result) => {
@@ -159,6 +182,7 @@ function App() {
         localStorage.removeItem("batmotor-profile-role");
       }
       setProfileRole(pr);
+      setUserAvatar(localStorage.getItem(USER_AVATAR_STORAGE_KEY) || "");
     },
     []
   );
@@ -216,10 +240,9 @@ function App() {
         localStorage.removeItem("batmotor-account-kind");
         localStorage.removeItem("batmotor-profile-role");
         localStorage.removeItem("batmotor-email");
-        localStorage.removeItem(USER_AVATAR_STORAGE_KEY);
         setProfileRole("");
         setAccountKind("");
-        setUserAvatar("");
+        setUserAvatar(localStorage.getItem(USER_AVATAR_STORAGE_KEY) || "");
         setUserEmail("");
         setIsAuthenticated(false);
         navigate("/login");
@@ -231,6 +254,22 @@ function App() {
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    setHeaderSearch("");
+    setHeaderSearchOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!headerSearchOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (headerSearchRef.current && !headerSearchRef.current.contains(event.target)) {
+        setHeaderSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [headerSearchOpen]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -275,6 +314,23 @@ function App() {
       ensureTemplateStylesheet();
     }
   }, [location.pathname]);
+
+  const runHeaderSearch = useMemo(
+    () => (target) => {
+      const value = String(target ?? headerSearch).trim().toLowerCase();
+      if (!value) return;
+      const exact = SEARCHABLE_PAGES.find((page) => {
+        if (page.title.toLowerCase() === value) return true;
+        return page.keywords.some((kw) => kw.toLowerCase() === value);
+      });
+      const next = exact || headerSearchResults[0];
+      if (!next) return;
+      setHeaderSearch("");
+      setHeaderSearchOpen(false);
+      navigate(next.path);
+    },
+    [headerSearch, headerSearchResults, navigate]
+  );
 
   return (
     <Routes>
@@ -460,14 +516,51 @@ function App() {
                         <h1 className="app-header-overview__title">{headerPageTitle}</h1>
                       </div>
                       <div className="app-header-overview__right">
-                        <div className="app-header-search-pill">
-                          <i className="ri-search-line app-header-search-pill__icon" aria-hidden />
-                          <input
-                            type="search"
-                            className="app-header-search-pill__input"
-                            placeholder="Pesquisar"
-                            aria-label="Pesquisar no painel"
-                          />
+                        <div className="app-header-search-wrap" ref={headerSearchRef}>
+                          <form
+                            className="app-header-search-pill"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              runHeaderSearch();
+                            }}
+                          >
+                            <i className="ri-search-line app-header-search-pill__icon" aria-hidden />
+                            <input
+                              type="search"
+                              className="app-header-search-pill__input"
+                              placeholder="Pesquisar página ou área"
+                              aria-label="Pesquisar páginas do sistema"
+                              value={headerSearch}
+                              onChange={(e) => {
+                                setHeaderSearch(e.target.value);
+                                setHeaderSearchOpen(true);
+                              }}
+                              onFocus={() => {
+                                if (headerSearch.trim()) setHeaderSearchOpen(true);
+                              }}
+                            />
+                          </form>
+                          {headerSearchOpen && headerSearch.trim() ? (
+                            <div className="app-header-search-results" role="listbox" aria-label="Sugestões de páginas">
+                              {headerSearchResults.length ? (
+                                headerSearchResults.map((page) => (
+                                  <button
+                                    key={page.path}
+                                    type="button"
+                                    className="app-header-search-results__item"
+                                    onClick={() => runHeaderSearch(page.title)}
+                                  >
+                                    <span className="app-header-search-results__title">{page.title}</span>
+                                    <span className="app-header-search-results__path">{page.path}</span>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="app-header-search-results__empty">
+                                  Nenhuma página encontrada.
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                         <div className="d-flex align-items-center gap-1 flex-shrink-0">
                           <div className="app-header-icon-slot">
