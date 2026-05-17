@@ -13,6 +13,7 @@
  *   5) errorHandler     — último middleware: captura erros e devolve JSON consistente.
  *
  * Vírgulas em `CORS_ORIGINS` (env): lista de origens do front permitidas, separadas por vírgula.
+ * `CORS_ALLOW_NETLIFY=true`: permite qualquer `https://*.netlify.app`.
  * ===========================================================================
  */
 import cors from "cors";
@@ -53,6 +54,17 @@ function isLocalHttpDevOrigin(origin: string): boolean {
   }
 }
 
+/** Front no Netlify (`https://algo.netlify.app`). Só usado se `CORS_ALLOW_NETLIFY=true`. */
+function isNetlifyAppOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin);
+    if (u.protocol !== "https:") return false;
+    return u.hostname !== "netlify.app" && u.hostname.endsWith(".netlify.app");
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Fábrica da aplicação Express (sem subir a porta).
  * Separamos de `main.ts` para facilitar testes futuros e leitura didática.
@@ -66,6 +78,7 @@ export function createApp() {
   }
 
   const allowedOrigins = parseCorsOrigins();
+  const allowNetlifyWildcard = process.env.CORS_ALLOW_NETLIFY === "true";
   app.use(
     cors({
       /**
@@ -78,7 +91,11 @@ export function createApp() {
           callback(null, true);
           return;
         }
-        if (allowedOrigins.includes(origin) || isLocalHttpDevOrigin(origin)) {
+        if (
+          allowedOrigins.includes(origin) ||
+          isLocalHttpDevOrigin(origin) ||
+          (allowNetlifyWildcard && isNetlifyAppOrigin(origin))
+        ) {
           callback(null, true);
           return;
         }
